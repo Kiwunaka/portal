@@ -1,0 +1,13 @@
+{
+  "started_at": "2026-09-09T05:13:23.564570+00:00",
+  "mode": "APPLY_OWNED_KEYS_ONLY",
+  "server_changes": [],
+  "material_changes": [],
+  "public_allowlists_changed": false,
+  "entitlements_changed": false,
+  "old_peers_removed": false,
+  "private_keys_exported_to_artifacts": false,
+  "status": "STOPPED_RECONCILIATION_REQUIRED",
+  "failure_class": "RuntimeError",
+  "failure_marker": "remote_failed_pokrov-de_ef2bf3f9b1aefaee24c790923e5cc664c2b13ac700ca6114636387a4747cb54e"
+}

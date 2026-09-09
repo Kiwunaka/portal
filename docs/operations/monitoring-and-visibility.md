@@ -575,6 +575,8 @@ Runtime telemetry wave `2026-06-02`:
 - `/api/admin/funnel/summary` combines anonymous site events with known `events`, `pay_attempts`, and `external_orders` to show the operator path: site entry, cabinet/bot open, checkout start, paid confirmation, and connection confirmation
 - funnel counts are operational direction signals, not billing reconciliation; paid truth still comes from signed provider callbacks and fulfillment records
 
+Observed 2026-09-09: the deployed manifest has 28 routes (seven workspaces and 21 capability routes). An owner-confirmed Telegram OIDC login and same-session step-up passed on production; all 28 pages were opened with this session. Online shows a partial panel snapshot, and the unsent broadcast form has no operation result. These bounded reads do not close the full role/expiry/revoke matrix or legacy cutover. See [the live operator evidence](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-OPERATOR-LIVE-2026-09-09.md).
+
 Admin ops app wave `2026-07-06`, command-center redesign updated locally on
 `2026-07-23`:
 

@@ -1,5 +1,9 @@
 # R12 — текущий результат и граница исполнения
 
+[Operator live](EXECUTION-OPERATOR-LIVE-2026-09-09.md): реальный Telegram OIDC-вход и step-up одной сессии PASS; 28 страниц открылись с явными границами источников. Полные expiry/revoke/role-denial и legacy cutover ещё не закрыты. Прежняя ошибка callback ниже относится к состоянию до настройки BotFather.
+
+[A04 production migration](EXECUTION-A04-PRODUCTION-MIGRATION-2026-09-09.md): четыре индивидуальных AWG-ключа выданы, прежние shared peers удалены. Backend `d3eba89` опубликован, 204 hashes и три периодических прохода worker без ошибок PASS; на каждом DE-интерфейсе ровно два индивидуальных peer. Installed-client и полный A04 остаются открыты. Ниже сохранены прежние состояния до миграции.
+
 [Platform deploy 9 сентября](EXECUTION-PLATFORM-DEPLOY-2026-09-09.md): support
 PR #244 объединён; backend `7d37005` опубликован, 204 hashes и пять units PASS.
 Static `0392052` опубликован как `20260909045925`, 887 hashes/public readback

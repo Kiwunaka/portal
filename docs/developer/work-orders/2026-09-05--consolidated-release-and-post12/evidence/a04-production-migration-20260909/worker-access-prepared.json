@@ -1,0 +1,22 @@
+{
+  "checked_at": "2026-09-09T05:16:32.341368+00:00",
+  "source_revision": "7d37005e4260995ab44ec3adb14bbffa3d42738b",
+  "public_key_sha256": "8bf1c2bde6aa1f81799580f6445eb855565edd053f72f05bae9921f8f197c4da",
+  "server": {
+    "helper_sha256": "ec16f34c7468093936547e508a9008fe29357947477ea47cfc479d46341fd5d3",
+    "authorized_keys_previous_bytes_preserved": true,
+    "authorized_keys_backup_sha256": "263d32b7d2a57e0b32d12b0a6cd586237f5a62f2ceb59976e39995bf7a0c33d2",
+    "forced_command": true,
+    "source_ip_restricted": true
+  },
+  "config": {
+    "target_file": "/root/portal_bot/runtime-config/awg-peer-targets.json",
+    "target_file_sha256": "f97def7d0ea2aaec5e74fecee0bdd04327db5f5edda076b5af4960aa8b308907",
+    "target_count": 2,
+    "known_host_key_sha256": "4ff9d387c5a48b5fe5c047eb79fd0ab46154fb3b971d786861f59c70b63bb045",
+    "worker_enabled": false,
+    "private_key_exported": false
+  },
+  "status": "PREPARED_NOT_ACTIVATED",
+  "old_authorized_keys_retained": true
+}

@@ -1,0 +1,1665 @@
+{
+  "source_revision": "d3eba8945e74eca025e2a8589be110d070fb562d",
+  "source_tree": "8192c61f21c72aeb1bbc083009c99a579c961790",
+  "base_source_revision": "7d37005e4260995ab44ec3adb14bbffa3d42738b",
+  "rehearsed_revision": "235e8a49e94261f39b1166b152fe547fe95da740",
+  "payload_count": 204,
+  "payload_bytes": 6263447,
+  "files": [
+    {
+      "source_path": "copy/catalog.ru.json",
+      "remote_target": "/root/copy/catalog.ru.json",
+      "bytes": 94244,
+      "payload_sha256": "33d048c6a4378e07b42f5d9c6dbda47a8220d217f7f60420a23361119e2f1cf7",
+      "git_sha256": "af380ebeee676cc4186a313110cda969c61ab897620b4093e7fee2c73f50d35d",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/account_experience_service.py",
+      "remote_target": "/root/portal_bot/account_experience_service.py",
+      "bytes": 7364,
+      "payload_sha256": "67fc8173847f7a36db70798b282816f44f72baaac0414b51207da112a601e98f",
+      "git_sha256": "8db740d95f13ac8b8fb592fef42ff5842a61be822bf25c687a5db1a303d11b38",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/account_foundation_service.py",
+      "remote_target": "/root/portal_bot/account_foundation_service.py",
+      "bytes": 71149,
+      "payload_sha256": "54d4943f2c98c7bca765350ce83e78287696e8c0bf4debf34bd9f4bce89f9064",
+      "git_sha256": "0feaf2a7b93a96a45efa2a850d53e8eb2184e9f94faec0e3dcc3f2ed9a70970f",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/account_recovery_service.py",
+      "remote_target": "/root/portal_bot/account_recovery_service.py",
+      "bytes": 13490,
+      "payload_sha256": "dd621d97063cf71c0c4e79b643d0a7c6b7172aac1693274473ae894cc82a40ce",
+      "git_sha256": "0086c9c6ad14286f7588ead609b602614b4256df86803b6d62b6fdba4b8d3085",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/account_security_errors.py",
+      "remote_target": "/root/portal_bot/account_security_errors.py",
+      "bytes": 426,
+      "payload_sha256": "6ca65517aa12c288881285f9862a6abc6230af2bc8fafe9a08837778a9dde807",
+      "git_sha256": "3bbb05fdd3085c8fb2d1b46a714b801f1b20ca40d8a859422608d1d69642427e",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/acquisition_service.py",
+      "remote_target": "/root/portal_bot/acquisition_service.py",
+      "bytes": 12856,
+      "payload_sha256": "315f083a2cf78d6945ed55474a0f64b7649ccd7f4485858be31dc1d5cd52ae02",
+      "git_sha256": "6cbab5a37096290c265da967046b7516ebba18f88c9a9ec8716eda2716a82899",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/admin_action_intent_runtime.py",
+      "remote_target": "/root/portal_bot/admin_action_intent_runtime.py",
+      "bytes": 71921,
+      "payload_sha256": "9ca626e5d679dbbed169f7ec302e7d63face0dd866f70e663de956023930e6eb",
+      "git_sha256": "e6fef333feb087b55ab9688ce79712b36db641d4afa7e257b29839886ada8b95",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/admin_action_intent_service.py",
+      "remote_target": "/root/portal_bot/admin_action_intent_service.py",
+      "bytes": 277174,
+      "payload_sha256": "c404d53c47ad043a6574d9935032a025f8130d37b8be371b28d8f22eb17a3b19",
+      "git_sha256": "5aaf3a552e620a751edf170f4063277138be831bf6a6c622c07ec167eb3a9bb1",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/admin_ops_service.py",
+      "remote_target": "/root/portal_bot/admin_ops_service.py",
+      "bytes": 87387,
+      "payload_sha256": "db890255047d0fa38f5803550381cbf77eee678041100e181d55b0afe7cab59a",
+      "git_sha256": "751c7677910a1462a7085fe1d3a6f41aeb1f405b866281700d1743ed3c8c4785",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/admin_v2/__init__.py",
+      "remote_target": "/root/portal_bot/admin_v2/__init__.py",
+      "bytes": 290,
+      "payload_sha256": "69f5f02d456839ac52ccce23e95ecd1239ee737e484e97d0e7a304f87c5f47e5",
+      "git_sha256": "19903a1b1ac6715e93df4b641817eb9faf738442d214c21a9bf88be3f60ecc8b",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/admin_v2/contracts.py",
+      "remote_target": "/root/portal_bot/admin_v2/contracts.py",
+      "bytes": 2855,
+      "payload_sha256": "93710cc9557b732e3be719a73007e792d0826254671a7988a06c66ccffd428ab",
+      "git_sha256": "ad38eee96f304ae31f26092550c2c07cf32730c5c4c55ff3f5289dd935b5e29c",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/admin_v2/meta.py",
+      "remote_target": "/root/portal_bot/admin_v2/meta.py",
+      "bytes": 2117,
+      "payload_sha256": "2945badd99bef5f7ed34f75bef7b4c98337e66808499621ab972a446b3cccfcf",
+      "git_sha256": "ae4b361c1bd1f2585fcf24935b22212cd93797e8cd3016bdc89f209ae70bb70d",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/admin_v2/roles.py",
+      "remote_target": "/root/portal_bot/admin_v2/roles.py",
+      "bytes": 5690,
+      "payload_sha256": "726f53d8f16260ce228d5043959a563498e61c882e9448355a983239fdbd1f84",
+      "git_sha256": "161176035dd60e7449c1ee544574303325ed1504dcc14fdbe037d74949056ad5",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/admin_v2/router.py",
+      "remote_target": "/root/portal_bot/admin_v2/router.py",
+      "bytes": 111655,
+      "payload_sha256": "404490720b3ce7aa56d47bbf98a573127340d7b1689f2b75301bc9d14da20b9a",
+      "git_sha256": "8c675e32808604b1c9cffc71f56a5d02edc97ac932839c36fb7313246f7003ce",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/admin_v2/security.py",
+      "remote_target": "/root/portal_bot/admin_v2/security.py",
+      "bytes": 25454,
+      "payload_sha256": "f5c2f3ac781c71b38393b9ef0ec7dc1ac141de4b5aa17e38626406be017c976a",
+      "git_sha256": "045c42d0368012e696cecb532edcb0ce6058642599d6dd32877323fc46f8e86f",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/antiabuse_privacy_service.py",
+      "remote_target": "/root/portal_bot/antiabuse_privacy_service.py",
+      "bytes": 16234,
+      "payload_sha256": "8ba7d11de4e2529516252b674e447b44c1bd0fa6bd0d730617b9392d5934e2ea",
+      "git_sha256": "b744c3c7aefbe722bf6a33d1caa9efb0e7b4fd816fd94c583749b2c2ef1afa8f",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api.py",
+      "remote_target": "/root/portal_bot/api.py",
+      "bytes": 367491,
+      "payload_sha256": "f67585865ebb193b2535c61e9d5d152e97320f7fbe7e4e79ae58121963fb7aa4",
+      "git_sha256": "c42ee6b992f4179a3ad6e2868cc3c202e225491d406bb2b47dd5ec3e9d8e60b8",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api_admin_action_routes.py",
+      "remote_target": "/root/portal_bot/api_admin_action_routes.py",
+      "bytes": 111960,
+      "payload_sha256": "f24ac0204512c4ac601185fcef1f70ec9dd9ed9a2ed20014587233237104d4a6",
+      "git_sha256": "8cf1745cdd169c0f79c073b230a82d6c8214a2402cbc5f061d881a5934a3776e",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api_admin_network_routes.py",
+      "remote_target": "/root/portal_bot/api_admin_network_routes.py",
+      "bytes": 5239,
+      "payload_sha256": "f054c63bebb99828f99647e11f62dcee238fed14a4d746532cda5b99e6d552f4",
+      "git_sha256": "5c30307014b84defde5c6a0a0d5bcf4e37be6c4e74cdda647727ec07bbb6acd9",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api_admin_routes.py",
+      "remote_target": "/root/portal_bot/api_admin_routes.py",
+      "bytes": 172267,
+      "payload_sha256": "6d1980814f6c9f5e46e29daf12e5f21daac585d04ee99ac36501ac2877dd47d5",
+      "git_sha256": "149367955408cd1ea9076d286d07bba7d1cb4a2a07c6b3b5bb139889c6b62ad6",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api_client_routes.py",
+      "remote_target": "/root/portal_bot/api_client_routes.py",
+      "bytes": 176537,
+      "payload_sha256": "af2d46b5ae78976c9ce15b3f579f97b79f15294beaebeaf57b1b72ddae815785",
+      "git_sha256": "f276938227a99208ea27f798ebfdceeff0a5c76c809c3498de6528102f3c4d45",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api_commercial_offer_routes.py",
+      "remote_target": "/root/portal_bot/api_commercial_offer_routes.py",
+      "bytes": 9427,
+      "payload_sha256": "f54d950736c8912e002628fb65ac3f255898c0eb2c8ba47c0de21e8f4bfbbaff",
+      "git_sha256": "cc23556ba977dc23f86b74674169e71a915fc460c3b4cb12a3f553983bc24b06",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api_observability_routes.py",
+      "remote_target": "/root/portal_bot/api_observability_routes.py",
+      "bytes": 7519,
+      "payload_sha256": "4ea79915c04c9898943736766c1ace6321f1cb14e328df7856f85b439bb7d0c9",
+      "git_sha256": "9cdb548e10b36bd9787e0f06754b0515e5902e9d985c9bb5cdab2bc195f9cf9b",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api_operator_observability_routes.py",
+      "remote_target": "/root/portal_bot/api_operator_observability_routes.py",
+      "bytes": 8974,
+      "payload_sha256": "3d260a349665050eaf2e9f4649fa5880ec747d626e4fc7c87b465abef57dab7f",
+      "git_sha256": "a1d8b22959c169b3528da73531f6e760f17d7da8b1850e8688396d19f04b0d7b",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api_payment_routes.py",
+      "remote_target": "/root/portal_bot/api_payment_routes.py",
+      "bytes": 14759,
+      "payload_sha256": "6f9d642035d76b583891bbad5c0f4f4ca33ded0faad21a7bceb38d925967de4a",
+      "git_sha256": "eda21d27d9bf37b0bdacc05e7f73b7844060c0499647fe9125accb6f39270f92",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api_public_routes.py",
+      "remote_target": "/root/portal_bot/api_public_routes.py",
+      "bytes": 77601,
+      "payload_sha256": "cf5c3c13b0555791e52b1457bea9ed8821ba2a74df8a5e130efc18bd80f814e7",
+      "git_sha256": "1b18d90af4e4234b2d00af468393ed6f91571e0304f6448fc43fb8892206d29c",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api_subscription_routes.py",
+      "remote_target": "/root/portal_bot/api_subscription_routes.py",
+      "bytes": 83186,
+      "payload_sha256": "c474edbb3825bc9648b7c025357d8e9bc3a74eb0ef7fbbbcfd3de24f75790ad4",
+      "git_sha256": "42d22ba48f5bb0c1dbc92def873e33b87bad380d351adc868ef32e93e53198d7",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api_support_bundle_routes.py",
+      "remote_target": "/root/portal_bot/api_support_bundle_routes.py",
+      "bytes": 17696,
+      "payload_sha256": "41d0e4a91754166f4676e2718138429de9f8030ab1dec5ab6a39be19071e5ab2",
+      "git_sha256": "c6d20697b48b3189c8c5c40f9bde9ceadb94f082bb4e1fd99efeaa54d04ec09f",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/api_surface_routes.py",
+      "remote_target": "/root/portal_bot/api_surface_routes.py",
+      "bytes": 169554,
+      "payload_sha256": "88d775fcffdfc2470a2a5c82e1403ca1590c0b61257ec1f5ac50fff7783925ab",
+      "git_sha256": "e3d9f952878f0e916942f4c6e9d9b723d6af4e27217294f4906fde1ac48f8ca1",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/app_first_service.py",
+      "remote_target": "/root/portal_bot/app_first_service.py",
+      "bytes": 16445,
+      "payload_sha256": "a52e868fdd35a950bfe0487dccf7615985ac1c72f6a1eb101845939160235ef7",
+      "git_sha256": "f9c43acf7f6e281154bd141b9c4d50f74f0e50c8968cde7529783c5427cd6f1b",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/auth_session_service.py",
+      "remote_target": "/root/portal_bot/auth_session_service.py",
+      "bytes": 27420,
+      "payload_sha256": "d48522ffa89608ff83842858698d44aea36d0081942bbb28824327d473d5d1bf",
+      "git_sha256": "9330a8799527a40c8db3f3e98f3aeac8818ea3afc3acc85cc7bb6e7cb98fb1b8",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "scripts/authenticated_egress_probe.py",
+      "remote_target": "/root/portal_bot/authenticated_egress_probe.py",
+      "bytes": 11251,
+      "payload_sha256": "c8ebabc26884aa5bc62ba372ef0adb525ff36f54dc962d728a41e19d6afd0206",
+      "git_sha256": "92dc0cbc2094d5d8a2473e948b4afa5eea64cbeb1249cad06990c7c8ac9c74a5",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/awg2_lab_service.py",
+      "remote_target": "/root/portal_bot/awg2_lab_service.py",
+      "bytes": 20874,
+      "payload_sha256": "e92d2dd99fe37070de65c2b36d10d83f28ff13b931ffd52aeb488b75bdd6a6b9",
+      "git_sha256": "82fe8841ce23675e54d9361145830fccb775790241eccd50a767deb1b5a5811a",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/awg31_lab_service.py",
+      "remote_target": "/root/portal_bot/awg31_lab_service.py",
+      "bytes": 23911,
+      "payload_sha256": "ebf1a3154b11523e5a94d223937fc8e74c3ac8095b7e0651cab023d631e75231",
+      "git_sha256": "dfe6d30384b97a6f1870ec155bf1654e7182b9b3e6fe710e8d2f77df4c442d53",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/awg_lab_key_binding.py",
+      "remote_target": "/root/portal_bot/awg_lab_key_binding.py",
+      "bytes": 2145,
+      "payload_sha256": "8ff59f92c916850a371a815b7d65a2625845c883af60f91b655c9b6c91dd5cd6",
+      "git_sha256": "c732543ebe087ac16c0743edf932513d65a67a10fa05f8186409e16d71322b33",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/awg_lab_peer_worker.py",
+      "remote_target": "/root/portal_bot/awg_lab_peer_worker.py",
+      "bytes": 10471,
+      "payload_sha256": "36c1fa8c2d47c3a7527a05987969a3de3c969e2fc2e4a58a954b7bef0bc23bc1",
+      "git_sha256": "c92303aa81713d585fe1b3786a3b0e7e27ad9ad2ea384df84eb4dedf66ad1754",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/awg_peer_remove.py",
+      "remote_target": "/root/portal_bot/awg_peer_remove.py",
+      "bytes": 7065,
+      "payload_sha256": "ec16f34c7468093936547e508a9008fe29357947477ea47cfc479d46341fd5d3",
+      "git_sha256": "cb67c4d857d8f32f3ea71ee35fcc4743d4d1dfa79e10bd1ecd16d37e2eb0063b",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/bot.py",
+      "remote_target": "/root/portal_bot/bot.py",
+      "bytes": 159063,
+      "payload_sha256": "2cd0d5c60993c4d92ba228dfe25367412fae233769dbf68c6a8e4abfcda4201f",
+      "git_sha256": "2cd0d5c60993c4d92ba228dfe25367412fae233769dbf68c6a8e4abfcda4201f",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/bot_admin_handlers.py",
+      "remote_target": "/root/portal_bot/bot_admin_handlers.py",
+      "bytes": 101871,
+      "payload_sha256": "fa8b5eb3df5bef393afbd57d4ec7c58117db3372060987688800fe7ab97bece4",
+      "git_sha256": "d7edab06df5df118f23329eb4452fc87b7e214e3175af6387f5997176cbede7e",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/bot_operator_handlers.py",
+      "remote_target": "/root/portal_bot/bot_operator_handlers.py",
+      "bytes": 49091,
+      "payload_sha256": "8b6c9317bc04acf5e45c0cfa83beaf41bad3fc73425622e60a13782049807c85",
+      "git_sha256": "b2b539e05b3ad881731ab36a7c198fa285d9065e021bf85b665cd90f03248f04",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/bot_payment_handlers.py",
+      "remote_target": "/root/portal_bot/bot_payment_handlers.py",
+      "bytes": 34752,
+      "payload_sha256": "1f5011c8b6b4afd81525a1a96a3dc409e4098867e3b779644eddd6e94e6f8876",
+      "git_sha256": "2ab945abd0ce65b0c1bd43dd31a610ea9f80825b2539cbfb7e461e24d5231bfc",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/bot_texts.py",
+      "remote_target": "/root/portal_bot/bot_texts.py",
+      "bytes": 8040,
+      "payload_sha256": "91d229d9eb2e67c7beb717ae4fdfe5a36c68da91657c46463f47f6d629d87131",
+      "git_sha256": "716dc8e4e1c4f3b5c88c28c2e966c4fc53b13a632deb47041f0f2d6cf4591eb9",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/bot_user_handlers.py",
+      "remote_target": "/root/portal_bot/bot_user_handlers.py",
+      "bytes": 150030,
+      "payload_sha256": "599a94e9b22765c2538cb2cb27054d80c79c5076d4d30a6c33b89ad4ead55004",
+      "git_sha256": "aee420334964577d44e5670d7557afba6bfb48a0c790123bbd551516ad4d735d",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/channel_bonus_service.py",
+      "remote_target": "/root/portal_bot/channel_bonus_service.py",
+      "bytes": 16703,
+      "payload_sha256": "15c308369d321c8109a3163cc71bac495c5a11884882c1b05f38c54bfe8b978b",
+      "git_sha256": "f195ecde5b9c49e3b7ecb0b889a39c54ab4ead8e62fb41186c3b5ee6af9ba09e",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/check_service.py",
+      "remote_target": "/root/portal_bot/check_service.py",
+      "bytes": 1104,
+      "payload_sha256": "5994634a077503f52939d7970aa60ad6d8a8b3bc868dd874a8894f5712228436",
+      "git_sha256": "d35a52f6a750a6a9fbb28c1e0ec506ba9eba552a08af87d143041cc629bb75af",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/checkout_quote_service.py",
+      "remote_target": "/root/portal_bot/checkout_quote_service.py",
+      "bytes": 2651,
+      "payload_sha256": "a4eb7e0d7649b926d076793573202f3fd45839af74fd8338447385900d8d913d",
+      "git_sha256": "ec019ad05a700e205f83c34332bc2afefd6374de73afd65158de21279843fbd5",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/cleanup_zombies.py",
+      "remote_target": "/root/portal_bot/cleanup_zombies.py",
+      "bytes": 2393,
+      "payload_sha256": "57263dbcd4b5f42f652bbb622bfc95465116360281162f77eab59fbe31e6d598",
+      "git_sha256": "f8e9a16256a4e8c237b3173db13f0904a381332d13f98ac7887de4f9a3cd451a",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/client_network_diagnostics.py",
+      "remote_target": "/root/portal_bot/client_network_diagnostics.py",
+      "bytes": 5132,
+      "payload_sha256": "83c3213cf90c0ef2b238fad2ec30fa7149b06f306a2fc989933a8cea3a6223ad",
+      "git_sha256": "7ddfb4dda7ae6eb7f9fcca9d3f2808a277f5dd34c56dc00bb757bad1116a8b44",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "scripts/collect_node_metrics.py",
+      "remote_target": "/root/portal_bot/collect_node_metrics.py",
+      "bytes": 50036,
+      "payload_sha256": "ba2e3fe1a2648ff5ba82978d8219cae037ebe47313d9555e2375fa47ea3b9ac3",
+      "git_sha256": "e065ffab1ba0710bb800fd1fa9cc6c50825108fe59a4e162ba8f41496d3f30be",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/commercial_attribution_service.py",
+      "remote_target": "/root/portal_bot/commercial_attribution_service.py",
+      "bytes": 25327,
+      "payload_sha256": "d5a6caffa28e4ab0831f0b5c23493830567c2ad95a1306f8832e3fc5d9b39635",
+      "git_sha256": "03cc8c76a2317ad6d3c12cdd22b682adbcb355ea8e7392f790369e7d02157001",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/commercial_campaign_policy.py",
+      "remote_target": "/root/portal_bot/commercial_campaign_policy.py",
+      "bytes": 18353,
+      "payload_sha256": "d2bf587c86a6938c86e73966a2802620622f5c4859882b87d9f1891571d4d38d",
+      "git_sha256": "c596e3affd4c28439244d092ab37a63feb57a5733962734da5a8f7f6946ad07a",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/commercial_capacity_service.py",
+      "remote_target": "/root/portal_bot/commercial_capacity_service.py",
+      "bytes": 16624,
+      "payload_sha256": "9b4e838e42504e6e81d113d6daad03ebc640d9f1319b124799c36264a353b336",
+      "git_sha256": "ebb898bc9df3f9e85f5440738d5beb3f1f897099a5e3f3e00a0647bfd25a1e56",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/commercial_contract.py",
+      "remote_target": "/root/portal_bot/commercial_contract.py",
+      "bytes": 5030,
+      "payload_sha256": "7ef8056ca126cd34d4845b5443da627f166e55fa70dce714ac744ea38d380625",
+      "git_sha256": "e3f0e558806f186fdb2d2bc7b2ab3f8ee27dd76dcb93f33a94ea6b1cdc7eb94b",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/commercial_offer_service.py",
+      "remote_target": "/root/portal_bot/commercial_offer_service.py",
+      "bytes": 34287,
+      "payload_sha256": "864ef7f020e724ebbcddc83428a55f541f318c5d7af83d212810b84ee52d6343",
+      "git_sha256": "581e5883c46a8dc498e7453c8f605966e7f31a61448b3b08b67cb8895bc961ba",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/commercial_order_service.py",
+      "remote_target": "/root/portal_bot/commercial_order_service.py",
+      "bytes": 32123,
+      "payload_sha256": "491d5653375c3dd7135efac1a97cc67f9a72d8716e386d7e080eca8ea04f78c0",
+      "git_sha256": "0aaf14edfbe681f8ce3d0ceba6f87469418e5ef7d03ff280cb84322e91e2069d",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/commercial_pilot_decision_service.py",
+      "remote_target": "/root/portal_bot/commercial_pilot_decision_service.py",
+      "bytes": 15404,
+      "payload_sha256": "68d9d84c829e38fc978f2e1d9f07a32c541be9b484328c3ff5e89464864c9f9b",
+      "git_sha256": "45a2645e7918833e7e1c25fef2d1626364437982a655e7f45ec55ee50d083a66",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/commercial_pilot_service.py",
+      "remote_target": "/root/portal_bot/commercial_pilot_service.py",
+      "bytes": 14369,
+      "payload_sha256": "572a7e9eb2ad4def35e8733cbc317cf4ee346db6131db42d4b862eaaa8e84d09",
+      "git_sha256": "05aa607c6a1514449066fb1a06c7754409ae814bb51b5b1cf7a1eb72b8c31947",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/commercial_promo_surface_service.py",
+      "remote_target": "/root/portal_bot/commercial_promo_surface_service.py",
+      "bytes": 16834,
+      "payload_sha256": "df7861324635e720cc7a8513dac4ac4b34b43f16841163ad307dad83affd39fa",
+      "git_sha256": "d312fa3cc550d78496fae2892200657950b738f58305551a33cb0ee90c5615b6",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/config.py",
+      "remote_target": "/root/portal_bot/config.py",
+      "bytes": 10454,
+      "payload_sha256": "67fc55563b86a712e9f03fafe060fffde698ccf0bd7dab454b243c083fd9062b",
+      "git_sha256": "4be049c914bd22ad9270e62a3964dc69e208ee2dc2e592a4a46469538a787de2",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/control_panel.py",
+      "remote_target": "/root/portal_bot/control_panel.py",
+      "bytes": 64386,
+      "payload_sha256": "2bf5319419933ba53b5195608a6766d47545c58546309862ce1fa5130df41a38",
+      "git_sha256": "1444ea0342b68a3c724e9ac62a4f3bbfd2af849584f97d4c23d6c050a2474ebc",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/copy_catalog.py",
+      "remote_target": "/root/portal_bot/copy_catalog.py",
+      "bytes": 1090,
+      "payload_sha256": "9d8f2ece564d50082cc86e9dfcf8f1e93aedd0204ae6021da24b9dba61566235",
+      "git_sha256": "e5759532518a1e53353342a9e221e19beac0c8f921e6e9600b74f2b9e02ac2d5",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/daily_panel_node_healthcheck.py",
+      "remote_target": "/root/portal_bot/daily_panel_node_healthcheck.py",
+      "bytes": 21500,
+      "payload_sha256": "360fdd094b7bab985c0b59bc3d163bd9d1e044a69fdc65567bc68ca2972064e3",
+      "git_sha256": "f08a4a0038744b4e4e16d8a6cb81b01d3e4467c24fd98b71a07473e24a3aa9ef",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/db.py",
+      "remote_target": "/root/portal_bot/db.py",
+      "bytes": 1376,
+      "payload_sha256": "dfeaf3794524c1110ce829c2f0211ed40b8a38555be8969a5ab5f21aef90d482",
+      "git_sha256": "18462b548def2e31835621d751c7441b78cae34709d2a019f3c73c6ca5c1b40f",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/device_pairing_service.py",
+      "remote_target": "/root/portal_bot/device_pairing_service.py",
+      "bytes": 9428,
+      "payload_sha256": "1f90284ab1509a96d0629b5f4370e22ca42d1e5ee930ce3c9e40aa9f4ca0a324",
+      "git_sha256": "d8cabbe0b6e3a315d83787c662049574330f66fa162094bd22602b299e4668fb",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/economy_service.py",
+      "remote_target": "/root/portal_bot/economy_service.py",
+      "bytes": 81847,
+      "payload_sha256": "8be45dbc6041a9139a492fd2134d9dbd7f44f8922f8ecf67f8d14f48b02deeb0",
+      "git_sha256": "5eb7a68b34802803ce7d33f2ca20c976a1dd55c04d4a1d0b28abc0a4695cebf4",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/email_auth_service.py",
+      "remote_target": "/root/portal_bot/email_auth_service.py",
+      "bytes": 16188,
+      "payload_sha256": "e488903120198de2ef3777012f4c9e7c79d03f8e7cc0d533365569c8cef618bd",
+      "git_sha256": "62498c86a4e4ae7bc0b9026838c32f8d165f6b3e6aee882a3d8a6efca5a540d3",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/email_delivery_service.py",
+      "remote_target": "/root/portal_bot/email_delivery_service.py",
+      "bytes": 4714,
+      "payload_sha256": "b420b828ab3b34e6e39fba7f94d9fed5f27ee2f056ac7c09ca8d2e2998d4cde2",
+      "git_sha256": "9c57bce258836b09d13edd10d0c9a58f1efb1bc80ea1fd775b9fd28f92c17820",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/email_relay_app.py",
+      "remote_target": "/root/portal_bot/email_relay_app.py",
+      "bytes": 13333,
+      "payload_sha256": "83284356357d7194efd67bb46421e45a03bbad13d808eec4df3e6b5fe0b7f5f3",
+      "git_sha256": "cff69f5e8231dcb375c639f04bd811119415c652f572b0dcf662e1a578c2276a",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/emergency_catalog_admin_service.py",
+      "remote_target": "/root/portal_bot/emergency_catalog_admin_service.py",
+      "bytes": 5544,
+      "payload_sha256": "d40e204b299597d9b9307c419b5ac934d13979da6555711f644cfc4a5902eeee",
+      "git_sha256": "bccb2940468b3be1d23cb9cc5108a86da60101e6efe3d4a699541b364ec8590e",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/emergency_catalog_crypto.py",
+      "remote_target": "/root/portal_bot/emergency_catalog_crypto.py",
+      "bytes": 6839,
+      "payload_sha256": "3797c300ada4e272d70cca49e18115bd901ab073577cdcf1fbe5a86261ff6291",
+      "git_sha256": "803179fdb9a08714e95f3ff6bec8df511dcc214e301c3611e0e9f5452e0a03f5",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/emergency_catalog_ingestion.py",
+      "remote_target": "/root/portal_bot/emergency_catalog_ingestion.py",
+      "bytes": 7688,
+      "payload_sha256": "5a3ded9258c1c4f5f54c202f74be7e115884316beaa627a488346d905d6424f3",
+      "git_sha256": "8ba0572936cdf39d402ba01b4174872052d5714ebf34886ff5d4eefa64aab7b4",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/emergency_catalog_probe.py",
+      "remote_target": "/root/portal_bot/emergency_catalog_probe.py",
+      "bytes": 7284,
+      "payload_sha256": "409b15aa41b14b552c0a8ec93ff879e5bd67eca6bcc73a9ca8f519766a3127da",
+      "git_sha256": "ac9875ad50753c2c212644f7105a36188ee65e98f3a962d7c87258a21fcf3b12",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/emergency_catalog_service.py",
+      "remote_target": "/root/portal_bot/emergency_catalog_service.py",
+      "bytes": 38190,
+      "payload_sha256": "6af9de9ff0761fc83aef43f50ac4476933a7da1aab535db1457f9d26093c0903",
+      "git_sha256": "298106aaf017e749a2e92e101045245706bb8546af487c4e6c6ccab4837ae1b3",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/emergency_catalog_source.py",
+      "remote_target": "/root/portal_bot/emergency_catalog_source.py",
+      "bytes": 15876,
+      "payload_sha256": "440b85587278c3694ffa3e9694b2e9a4a53148933514065d9e5975e73b3c8328",
+      "git_sha256": "cbe078d124433f790d65fe627a0f1542dc8731be59928abc3c029ec247299ae4",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/emergency_catalog_worker.py",
+      "remote_target": "/root/portal_bot/emergency_catalog_worker.py",
+      "bytes": 14324,
+      "payload_sha256": "817b5274f430fe84b96c1d0277ec2d691480835b9f35895ac0659dc69246c5e4",
+      "git_sha256": "6f09ec5eb9bc80db3960b36975e435a66be9ef9795f6ba4734ec6a9e9c3e1568",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/emergency_eligibility_service.py",
+      "remote_target": "/root/portal_bot/emergency_eligibility_service.py",
+      "bytes": 5667,
+      "payload_sha256": "5cf7659491463b789a49e6a692d89a056d417362f5c3db5acb07abb8a3caaab9",
+      "git_sha256": "76854396b453bc0af03cb8ce8a10ff5f2c20342828eb1b91b6947f7e928beaf2",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/emergency_geoip_refresh.py",
+      "remote_target": "/root/portal_bot/emergency_geoip_refresh.py",
+      "bytes": 4852,
+      "payload_sha256": "ef2518e5c14fbc1ec7eacb52d04a60cc26939e19de0c68b2e335251be0b25d34",
+      "git_sha256": "8d428c5933edacdd1591c1c457478e56a3418b573407e95ffbd5f509b2ea8060",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/emergency_geoip_service.py",
+      "remote_target": "/root/portal_bot/emergency_geoip_service.py",
+      "bytes": 5060,
+      "payload_sha256": "d5fb875c5bbec6f9859995af9017f1e3dce092c9debf17c13233e4fb3822f892",
+      "git_sha256": "28e7909a5f9c5f2712f57a18a919902511871871dd739de4637f26fc5e61e657",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/emergency_linux_probe_adapter.py",
+      "remote_target": "/root/portal_bot/emergency_linux_probe_adapter.py",
+      "bytes": 14847,
+      "payload_sha256": "9e67edba05c17c02692d619a0c7d7eb294579b98937a8f611475883298d20ad6",
+      "git_sha256": "554e94057d276c8ce7ab7090123f6e83e6da93a6186ebf1e706c33ae02c28cf6",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/emergency_profile_service.py",
+      "remote_target": "/root/portal_bot/emergency_profile_service.py",
+      "bytes": 21848,
+      "payload_sha256": "598364a1582d6d4234d4d7d0b7d6c5c575d9066b53c63b479bcfe6ed3bb07c32",
+      "git_sha256": "56fe1d6679e701bf4bcf70e5058992a14799b7505182b18f193696aa21576b53",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/event_loop_lag.py",
+      "remote_target": "/root/portal_bot/event_loop_lag.py",
+      "bytes": 2214,
+      "payload_sha256": "b09fffe68c86753f2c080fe5d87d3a8d5480a2e8b3d656b40d7ef56af6918a2a",
+      "git_sha256": "2f9af7f1c106697b03c97dc23ad5630d291218961aac9df831951f8ef880fd01",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/events_service.py",
+      "remote_target": "/root/portal_bot/events_service.py",
+      "bytes": 7447,
+      "payload_sha256": "ceb3bda630c0d00e020e0a05b2d61c3d4b208145ebf121a730f0540b5ef10fba",
+      "git_sha256": "cd6d4dc3a70b7141c78ba9d55c561215bb4bb589d14c1def6bef8349352ca270",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/feedbackbot.py",
+      "remote_target": "/root/portal_bot/feedbackbot.py",
+      "bytes": 14695,
+      "payload_sha256": "7bc5e20f8de3b15229c993ec457d48e8917f3292ff1c2794b7c9e3637353a1ba",
+      "git_sha256": "13172f5fa3d2c6881b294f6c535ff840794bbb33f78aa9286a49340ecd9be702",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/free_cycle_service.py",
+      "remote_target": "/root/portal_bot/free_cycle_service.py",
+      "bytes": 18581,
+      "payload_sha256": "f62d7874947cdba8973644e278b2c25a4d271a02170ff2d5dbde887f9b664fb9",
+      "git_sha256": "f1bd19d79593050355f32035e03664c0e4f00a64d90217d8582c229f2c505dbf",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/get_logs.py",
+      "remote_target": "/root/portal_bot/get_logs.py",
+      "bytes": 1959,
+      "payload_sha256": "0654d0e12629727ec19faf65013de541b02f08b2bd784464a5b7eb4daa829499",
+      "git_sha256": "cd11dc8d104c8d00bca7456f2864df10f60c343940f5c57544fc181c68b500d9",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/gift_cards_service.py",
+      "remote_target": "/root/portal_bot/gift_cards_service.py",
+      "bytes": 10248,
+      "payload_sha256": "20ba7000982a372a3a239eb9a9ef328183e0402c6017cd9a8686ab4944bf823f",
+      "git_sha256": "7eb72c107d7e370e48e0d3462255a20f9cc364df43136520bf6c31a8cc6244d3",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/helpbot.py",
+      "remote_target": "/root/portal_bot/helpbot.py",
+      "bytes": 41472,
+      "payload_sha256": "1377aadce4aebf96574320f1fef78f411f20225702816a3b9cc2158ef2512b03",
+      "git_sha256": "c1af03837c5d60125f671f11b3b24793a92ff5c774bd2d2127cba5bcfc9b7120",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/hy2_lab_service.py",
+      "remote_target": "/root/portal_bot/hy2_lab_service.py",
+      "bytes": 19485,
+      "payload_sha256": "27d77d8158c018e69e415a103f244b80b33512f635991a020f8a215e7c68dd7b",
+      "git_sha256": "318ad8113b3955553c0fbecca74a37fac67ca367ba95a3bb7feddae187494f4c",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/incident_service.py",
+      "remote_target": "/root/portal_bot/incident_service.py",
+      "bytes": 10112,
+      "payload_sha256": "e2088c46e4ff305d2fc38813eb925056f9d7b61c27c36d6cb1dc1fb48ceba700",
+      "git_sha256": "8af6c4c8278d5213fa7596cfa8302bd173d7ec9b6f7fa9047c79c7a4bc692627",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/internal_request_auth.py",
+      "remote_target": "/root/portal_bot/internal_request_auth.py",
+      "bytes": 15275,
+      "payload_sha256": "0fa138b29292606e34288105771664e0415a65667adefa2a6068f4e752b6203f",
+      "git_sha256": "c7346968656e6580850e188ee3d012837a79fb88d97af5494c8c6ba4d1f4543c",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/legacy_redirect_bot.py",
+      "remote_target": "/root/portal_bot/legacy_redirect_bot.py",
+      "bytes": 2577,
+      "payload_sha256": "0f837a037f36d90356dc87d3dc759cef0e2a65a9dc37f7e2143c3bfee1e0eb0d",
+      "git_sha256": "615d0c84f88157299bb630b5b8bb43a72033d33272c04409b96d1179189dcb21",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/marketing_pilot_contract.py",
+      "remote_target": "/root/portal_bot/marketing_pilot_contract.py",
+      "bytes": 3546,
+      "payload_sha256": "f3dd8a2b33b9f13394e64f677e38dd468d5f71d43b3dd3c65e07ba190233dc4b",
+      "git_sha256": "b81d27d45cd9f2a1dd3a4376f10c9b1c322bcfe5c2c13569c3b9565014c17b70",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/migrations.py",
+      "remote_target": "/root/portal_bot/migrations.py",
+      "bytes": 339985,
+      "payload_sha256": "75a6d78fcf9bfe6348824c99406feef895ee1832f38049e6b9fad2620ce28e07",
+      "git_sha256": "75a6d78fcf9bfe6348824c99406feef895ee1832f38049e6b9fad2620ce28e07",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/models.py",
+      "remote_target": "/root/portal_bot/models.py",
+      "bytes": 137225,
+      "payload_sha256": "6fb565bb7df1c162ce1e58d3b34b84d8807a19b4ba8693c03d23267c2e4e0b58",
+      "git_sha256": "6fb565bb7df1c162ce1e58d3b34b84d8807a19b4ba8693c03d23267c2e4e0b58",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/module_slices.py",
+      "remote_target": "/root/portal_bot/module_slices.py",
+      "bytes": 6868,
+      "payload_sha256": "84cfb0c5545bbbce61afc7f09bff395178f53116cc5204b4d9f8b67b1f8522fb",
+      "git_sha256": "5cc298f2a22c91f26e6b67b1e06ab4cb311ae35dad6a018f9d22b2d3a7a0e019",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/network_rollout.py",
+      "remote_target": "/root/portal_bot/network_rollout.py",
+      "bytes": 33668,
+      "payload_sha256": "abf4f9c8be2da2d06b3892db660cf51c6ff37f5b3b70dc31822ff74c0cbadbfc",
+      "git_sha256": "092a4ea6bcdcb887d4440d7f0b3b3db853b85318a40fdf71b433bb026c337cec",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/news_draft_service.py",
+      "remote_target": "/root/portal_bot/news_draft_service.py",
+      "bytes": 13695,
+      "payload_sha256": "e53f4bf4dd4f999bab2b7d0463fa2bab0101762774d419244cdaec229a964ce6",
+      "git_sha256": "f5b00a8597dd2a7f15aeb7fdb790788c9cb0f8e461eb82fef0a2114946c9bbf3",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "scripts/node_dataplane_probe.py",
+      "remote_target": "/root/portal_bot/node_dataplane_probe.py",
+      "bytes": 23608,
+      "payload_sha256": "7661c84973571b10733a12212315dd8c2c0c00b287e735da2554319fdeade5bc",
+      "git_sha256": "08801c9ace4c825225838996d22fa5dde131751cf1cdbefc0d5ebd4175a3c48d",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/node_observability_sanitizer.py",
+      "remote_target": "/root/portal_bot/node_observability_sanitizer.py",
+      "bytes": 8309,
+      "payload_sha256": "16b268c5135c098666dbd32b7e79e29de94e871ccbc079b2fa09113d26bc823c",
+      "git_sha256": "d8768ce94d9b79dc37cd4904641d683da7dbde9e828bef5781c3eef87ba568e0",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/node_policy.py",
+      "remote_target": "/root/portal_bot/node_policy.py",
+      "bytes": 25776,
+      "payload_sha256": "bb56d6331577fac6850fd9634298b23cf8c8fb730df53f54dd8a2cc3bbb61083",
+      "git_sha256": "153ddf031c75288a1106de26f937e4db3d8895ed9b84e05fbb99d2cbdff3b6ed",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/node_provisioning_service.py",
+      "remote_target": "/root/portal_bot/node_provisioning_service.py",
+      "bytes": 77393,
+      "payload_sha256": "262c14c3d98755bcf1e29aab16a830c87a444433845ce062adb653c3ca3669f1",
+      "git_sha256": "3b4aff48f9471c355ce11cc8120bbcb3f60a8be45c6999634f51888331714020",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/nodes_repo.py",
+      "remote_target": "/root/portal_bot/nodes_repo.py",
+      "bytes": 9662,
+      "payload_sha256": "fd323ad6329f939de1127abaa1124a952efa5ed1719c16080e1774fab380fb5e",
+      "git_sha256": "7e6530237db406f3f3001551a40e8aff63070ddfe2d7534a01b3cca74e68046b",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/observability_ingest.py",
+      "remote_target": "/root/portal_bot/observability_ingest.py",
+      "bytes": 24507,
+      "payload_sha256": "46b01d15f47364949300e725645894d608463e060b2b9e41ef39cb4a21d66c62",
+      "git_sha256": "8ab1b1900e3e05ddc306c813a9edc08acce498f0e494704ea04d442767b9773c",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/observer_service.py",
+      "remote_target": "/root/portal_bot/observer_service.py",
+      "bytes": 22491,
+      "payload_sha256": "19e1c6289cd3dda325715d1984a9676b6225ebaeb027a769a5f7b5a581b93a27",
+      "git_sha256": "894fb5f230212f17ab3973262fb85548f2907b07b21b162dd074fd21fdbaf558",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/offers_service.py",
+      "remote_target": "/root/portal_bot/offers_service.py",
+      "bytes": 2732,
+      "payload_sha256": "684bcc5c6147a65887e82cc78de588ac3ad99efc135514118317b1d02ba8d5fc",
+      "git_sha256": "70150312b28526b4809acd731e0190303eddaee8ec7dee10f2ec57033b0613b7",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/operator_governance_actions.py",
+      "remote_target": "/root/portal_bot/operator_governance_actions.py",
+      "bytes": 21343,
+      "payload_sha256": "ac41711718c11e919a1fe783fd295eb9069723fe9bcddffac542b53f5e73399b",
+      "git_sha256": "2dcf62015bc146075d22d2dc9bc57401babc3115ee2c85a4c5e5f9b8de740605",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/operator_governance_service.py",
+      "remote_target": "/root/portal_bot/operator_governance_service.py",
+      "bytes": 24851,
+      "payload_sha256": "030cf0f5059dd31235ea329e627ad6af5980b6e2e33923d66a8168aee8a17281",
+      "git_sha256": "108f46186ca2622bd8e2fd685133bab76dc4275ca1e21398ff877e5389f12307",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/operator_growth_service.py",
+      "remote_target": "/root/portal_bot/operator_growth_service.py",
+      "bytes": 10300,
+      "payload_sha256": "e6a8b31d3fa878daa131d96c7c3e81992639b4ee36acab65b0337a4a5146fd9e",
+      "git_sha256": "17358f59a4d2f4a4f34f060b28235f48f0520901ed609496ca9bff7531e9d414",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/operator_money_actions.py",
+      "remote_target": "/root/portal_bot/operator_money_actions.py",
+      "bytes": 7075,
+      "payload_sha256": "19b894e3b0661db6d2ec737266132457cad0edf32ba8947258a4b0231337a0f3",
+      "git_sha256": "51bf0ace96d356158a586f3241f84cfd637117482301ca2142da78cfc4d04492",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/operator_money_service.py",
+      "remote_target": "/root/portal_bot/operator_money_service.py",
+      "bytes": 28467,
+      "payload_sha256": "3160682fb07dd99044f7b395a7a75ec7d5cf6cf4504d6a2f1bd344ccf18b60d3",
+      "git_sha256": "4defcff22b45756ce40623a8ffac571fd01393feed7e578b28958cb3533469a4",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/operator_network_service.py",
+      "remote_target": "/root/portal_bot/operator_network_service.py",
+      "bytes": 8036,
+      "payload_sha256": "a5bf31d12f0b1124bd187a7413e979e9889cf2003b8488fc56a036381a08cfb4",
+      "git_sha256": "f0d79366e787bb7e0c25c232339e7ffb421825e6c6e8d0a29f9bab3740ea6b96",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/operator_observability_service.py",
+      "remote_target": "/root/portal_bot/operator_observability_service.py",
+      "bytes": 33799,
+      "payload_sha256": "b6350baf9f9cb18ee1930e01887ac98b495c3a220f9d9854390d6d80d4965e6b",
+      "git_sha256": "558b9f5b84f4b83656d176d7299cbe4f450f1a614531f56ebe8e373881252f0d",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/operator_release_actions.py",
+      "remote_target": "/root/portal_bot/operator_release_actions.py",
+      "bytes": 19477,
+      "payload_sha256": "8d1d3bc032bd990f0ecaeec0af6b910cafbb8e3246d90d1934be742be6b8a72e",
+      "git_sha256": "f72bb31b791cb6f28058c13f10b417e67b45789366ac5e83e6f156dbef18c7cc",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/operator_release_service.py",
+      "remote_target": "/root/portal_bot/operator_release_service.py",
+      "bytes": 17883,
+      "payload_sha256": "be2b0811f1c64ae2d51019f09690878a6013f2897fb8762371580ee366976c49",
+      "git_sha256": "504ad2d0d0a9c52ef59b7e32597717ffd28331282c8c4f29ec59384969cc1d7d",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/operator_work_actions.py",
+      "remote_target": "/root/portal_bot/operator_work_actions.py",
+      "bytes": 45006,
+      "payload_sha256": "8cd6de786dac3a4907b6dfd6448924322ac3d73c192131468ce950588e06edfc",
+      "git_sha256": "fc9f8d13e809bdb0c548dfc0c4ebb36c102112fc13be76b420059fed2806d8cd",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/operator_work_service.py",
+      "remote_target": "/root/portal_bot/operator_work_service.py",
+      "bytes": 14024,
+      "payload_sha256": "98d829b30a1a7f5eafe8d92a7e54eedf763288555c9e4b34780e339cca4ca640",
+      "git_sha256": "cc76630a093c374189a0aabddb93f6c994a59f18b2469fdd18a36454cdf2625f",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/outbound_http.py",
+      "remote_target": "/root/portal_bot/outbound_http.py",
+      "bytes": 9608,
+      "payload_sha256": "f1cb8b59ebb397481b35f9401b15a96c112c80ca8950ffc408186feb48f4423b",
+      "git_sha256": "dc31653e97eceb7b7789ce70845e833ca4d3d41b78c074ae59d3e9ccdd94cec6",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/panel_client.py",
+      "remote_target": "/root/portal_bot/panel_client.py",
+      "bytes": 80101,
+      "payload_sha256": "fa641cd430e07b2b29a15fc584b13dd4acbd92701da9da5b456e4d06847ab5c2",
+      "git_sha256": "6faee4fdb29370b243faa897b5b26245b084ce990aa2a1c0f8ae3182020f9d25",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/pay_attempts_service.py",
+      "remote_target": "/root/portal_bot/pay_attempts_service.py",
+      "bytes": 7403,
+      "payload_sha256": "1441d12b1065333b3b8c3d4f104b889838adfdfb3be0863e3e30d7b844f2879e",
+      "git_sha256": "605b9744810d954fee38f55753112dd902adb4ff4a242e6ca6470d25b3f0a1f0",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/payment_callback_application.py",
+      "remote_target": "/root/portal_bot/payment_callback_application.py",
+      "bytes": 17784,
+      "payload_sha256": "5898c16a44faeccd873d9d7a87ff2bd828beedaf57859295f60d4b9e1e77e6f2",
+      "git_sha256": "6d0dd77672ad975153543280fe7f673f74fc3e4471dab52e37677021d18962a1",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/payment_db_runtime.py",
+      "remote_target": "/root/portal_bot/payment_db_runtime.py",
+      "bytes": 2937,
+      "payload_sha256": "2ff23bb0b54a4a51e2312ab5b8a59483d89e89db43b4f44647d997c667ab64b0",
+      "git_sha256": "06d86c0a794e48abe2b4d3ddc7e0cbb242ecac32bf736489cb3b7d53c5768551",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/payment_entitlement_outbox.py",
+      "remote_target": "/root/portal_bot/payment_entitlement_outbox.py",
+      "bytes": 17681,
+      "payload_sha256": "5bcb3f576e8b062995879e193974971b057611c21755f67a2df54a194369467f",
+      "git_sha256": "a9f73e131c383a35dcc18526f4766f87ee945e88cc59cd6d0be2ece3f109375b",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/payment_entitlement_service.py",
+      "remote_target": "/root/portal_bot/payment_entitlement_service.py",
+      "bytes": 27932,
+      "payload_sha256": "0dad090d94ca5f5c25a5fa6165c908558d8c17855563805eb8acd3f1b1015635",
+      "git_sha256": "17b2f6c659c935f0f0b4bf242e6ca2c84fe0e06b57a8010e7d97c5eedd1e3066",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/payment_order_service.py",
+      "remote_target": "/root/portal_bot/payment_order_service.py",
+      "bytes": 16601,
+      "payload_sha256": "ee937920eb1ca767dc87574de9cef388ab79c1dbd6b1fad16162c32d236c3c16",
+      "git_sha256": "b7550c734f855209de38ef1e73eeca8e25871496a4e78882db116f8ed9e16004",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/payment_providers.py",
+      "remote_target": "/root/portal_bot/payment_providers.py",
+      "bytes": 28586,
+      "payload_sha256": "54e1aba8880e75b14d4458abb706b6dcfd1aac1c395c0ed691c63d762cc6c38c",
+      "git_sha256": "1e292dcd6d10b50fbd7513a1a3adf023f3b7fcedf480f0d427acde94e5b21513",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/payment_return_service.py",
+      "remote_target": "/root/portal_bot/payment_return_service.py",
+      "bytes": 10949,
+      "payload_sha256": "9f7303a4c312054cdfc2ae2cfef5adb00d8ae60fa1b7a6becac266e40b7a2bff",
+      "git_sha256": "14a0298e399dd7568a3df947e53819910745f0326537282bd56fa03b8ae3b625",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/points_service.py",
+      "remote_target": "/root/portal_bot/points_service.py",
+      "bytes": 10851,
+      "payload_sha256": "54f8a3e55b4c5030e69cd36c1849a07868e86b751a97ef386b46c5c08248c72c",
+      "git_sha256": "6472245d740f63c7e55720544583bd2ba7513f20242d9b3b6f3d1b9b89cc3bab",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/program_application_service.py",
+      "remote_target": "/root/portal_bot/program_application_service.py",
+      "bytes": 8348,
+      "payload_sha256": "90ee9d1ac42ba05227c9cf274bf93132ed1b063bbdd553d341d9846c9b1874e6",
+      "git_sha256": "0d5eef0badb2bb4a2f66eebdbad3e3b1e423f2b059a3ad3159f7b4f4df617ee9",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/public_urls.py",
+      "remote_target": "/root/portal_bot/public_urls.py",
+      "bytes": 1622,
+      "payload_sha256": "52840eea405dcde7fba383eaea62183794148aaa97130b83f26a4552d9085ddc",
+      "git_sha256": "54a856e289c526471c7292f25b03fe5d8d84ff35bb62f2662a30c590a4cb8371",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/release_announcement_job.py",
+      "remote_target": "/root/portal_bot/release_announcement_job.py",
+      "bytes": 8644,
+      "payload_sha256": "03f6e13c3eacca1df52c49df7f5d109e697b9296e17513e14dc294571a4e4c15",
+      "git_sha256": "5881ffadb092c04b774b21249bc87c17a21004c4658750a512d7c915aa72a204",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/release_evidence_service.py",
+      "remote_target": "/root/portal_bot/release_evidence_service.py",
+      "bytes": 27992,
+      "payload_sha256": "12d366cb002ff4cfd0a1ca49e973a67efd33aceaef9f6763322fddfabad59751",
+      "git_sha256": "e0511baf339286132ad1b8184bb5535182700c70c7f53f754e2db149afae88e0",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/release_health_baseline_service.py",
+      "remote_target": "/root/portal_bot/release_health_baseline_service.py",
+      "bytes": 14460,
+      "payload_sha256": "e647e13effafc4be70c44933ec17575a51cec3c22525bdb1ef9439652ee4b079",
+      "git_sha256": "9e02c771232a7d953b038f6653d8da49403e800f9bc16a6506786a037af98641",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/request_correlation.py",
+      "remote_target": "/root/portal_bot/request_correlation.py",
+      "bytes": 2462,
+      "payload_sha256": "6a16a061cc1c8a45b04a5a81ceb1d8502d5c22a01ef438ac7293cc74256327ff",
+      "git_sha256": "75fcf813a91bb2a4b09278041fb0cb8f898f6002a5f1a2ffb555fd2d5bbbc619",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/requirements.txt",
+      "remote_target": "/root/portal_bot/requirements.txt",
+      "bytes": 132734,
+      "payload_sha256": "f14fb252fbc18884556863a0cb3ed04eb72e0ac0b48ac1fe384ace575e9a322c",
+      "git_sha256": "bcf26246b4a9c9c45b0a73a11f1145d0f0cd779a3e659acbfab8ee5cc5a2f5f0",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/rewards_service.py",
+      "remote_target": "/root/portal_bot/rewards_service.py",
+      "bytes": 47153,
+      "payload_sha256": "3d653ebf41ed7ff5bd5132e2137b90a795ac63c33c5a7b9f3a5f9d32350077f2",
+      "git_sha256": "815753050d1d988c32aed9a4dc0c061d96b26d474b8a005f3d6fc7ae298d95ee",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/ru_probe_contract.py",
+      "remote_target": "/root/portal_bot/ru_probe_contract.py",
+      "bytes": 24310,
+      "payload_sha256": "b1a5f5297446c9029b0d25d2aee5a17b8392e8ebb30388ae8031418f86295469",
+      "git_sha256": "f0cdcefc0fc67146cfc3604de0c5d4aaf9f3d0238b409f340dd70a06fb376d34",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/ru_probe_service.py",
+      "remote_target": "/root/portal_bot/ru_probe_service.py",
+      "bytes": 84301,
+      "payload_sha256": "dc2b05d2bdd87b98c165080f4fc9645cec17ba53ec0ef9d18b0b78f31c042be1",
+      "git_sha256": "ad5934f9d10361e9d17ced447d5e3c9d28f93ea17507d2c34d3716ccc92d63f6",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/shared_surface_facts.py",
+      "remote_target": "/root/portal_bot/shared_surface_facts.py",
+      "bytes": 1303,
+      "payload_sha256": "9fc7dcbdc7cbd48b400b47c91f2ab72835c9543192a6b0ebda28cf644e2c80bf",
+      "git_sha256": "5d31e4e2cbcee715aab8123620159ea6fd44a39618d9b9814fbaad2b172f3009",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "scripts/singbox_authenticated_egress_adapter.py",
+      "remote_target": "/root/portal_bot/singbox_authenticated_egress_adapter.py",
+      "bytes": 48591,
+      "payload_sha256": "fc4bdfa66d7db831f0edbe4a5f3dc6a1dcab766ba045ecdaf5ff83c97aa439c6",
+      "git_sha256": "2b49eb076a2b15d504ccc7f7cfaf3adb3a2b1ff528dc838692a71cf20284ee0f",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/ssh_host_keys.py",
+      "remote_target": "/root/portal_bot/ssh_host_keys.py",
+      "bytes": 1904,
+      "payload_sha256": "bb2a0b3c803a78bf218950debf9c7af9758319c60291804cd237f14412209810",
+      "git_sha256": "1cc724b1f1a8c216460c2f492e59007bd84d155ac68b116adae898f571138199",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_account_service.py",
+      "remote_target": "/root/portal_bot/support_account_service.py",
+      "bytes": 11081,
+      "payload_sha256": "28f1e2c3b9324febf214936f4968a2088e321961ea6dcf12452e1aa3748487ff",
+      "git_sha256": "d53917946c2cf85af725a3570ffe10ecf6f292946dae620901e6b02c20aed6a2",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_agent_context.py",
+      "remote_target": "/root/portal_bot/support_agent_context.py",
+      "bytes": 14570,
+      "payload_sha256": "bef63cbc43130bfbe9cb1454f46bf672d1eca3ebb4f9876557d1c3dd874cee82",
+      "git_sha256": "5ce90b67dc41a71a35f640837ecd83258cb2518f1e4416c050aed99cd41b1549",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_agent_grounding.py",
+      "remote_target": "/root/portal_bot/support_agent_grounding.py",
+      "bytes": 24224,
+      "payload_sha256": "96319759a3b3575c564ccedb245c49adb41890ab02be5b47b7313b99c8e7d6fb",
+      "git_sha256": "2334a5eed4ab016370224c0c50ed9df332a004077ea09030d854a1c837f6c575",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_agent_harness.py",
+      "remote_target": "/root/portal_bot/support_agent_harness.py",
+      "bytes": 47374,
+      "payload_sha256": "7a9fd284cbadf875f622e4f8c4e77d28807934a04cfb61002760c6fd1ea83f64",
+      "git_sha256": "0b752410d55e7eac0936c05b030cad73d700809c39b6b9baa843bf623ee92c57",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_agent_knowledge.py",
+      "remote_target": "/root/portal_bot/support_agent_knowledge.py",
+      "bytes": 17041,
+      "payload_sha256": "bfc92f9f8227b0106bfc7655a56cb2053b9aa732144ec91cae59f0df562d00f2",
+      "git_sha256": "177b3fa6fe652ddbd28f8e434e23a945b7090706560e852c6c73a8e4d244dd9b",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_agent_policy.py",
+      "remote_target": "/root/portal_bot/support_agent_policy.py",
+      "bytes": 12389,
+      "payload_sha256": "dcf0319f30db1025c7b09601bb82fd241aee9249f54fe3a498a156efc66546d5",
+      "git_sha256": "cd28598e2b94987ad0d28e3362a5d162e05cd74c178d07817f5c6688a5b34e05",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_agent_provider.py",
+      "remote_target": "/root/portal_bot/support_agent_provider.py",
+      "bytes": 9275,
+      "payload_sha256": "b44948981bfe286b1a8b77d77f29c28f065386b74b7a420ced5ba6ac5fa38525",
+      "git_sha256": "5365ee73061a48fddd80369fb64d51e13ba29b0f5cf229cf4c0c45f68dc5301d",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_agent_safety.py",
+      "remote_target": "/root/portal_bot/support_agent_safety.py",
+      "bytes": 24243,
+      "payload_sha256": "1b10c1587d5a6690b9b8c9f5aca820955d73d239cc35150537dad0593f2c9edb",
+      "git_sha256": "eb361ef3a13bbd01c0663b676ad6235b1d67ed5ab9a66f7e6c2870cd07ef285c",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_agent_service.py",
+      "remote_target": "/root/portal_bot/support_agent_service.py",
+      "bytes": 18409,
+      "payload_sha256": "6f0d61d82256df09f8b4527b4863694cbe224baf87cbb389eb5985044ccd3b6c",
+      "git_sha256": "c7fb25f52587473d1056a629850ab033d45429244afa418f7b22c0593e9bcb8f",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_agent_sessions.py",
+      "remote_target": "/root/portal_bot/support_agent_sessions.py",
+      "bytes": 12911,
+      "payload_sha256": "0f0fb9480978aa44191eb3375ab9f254821e2a42bc99ad72c81b860b888fbabd",
+      "git_sha256": "82da7ffb833b8f72838aeb4f1520bea44b84487c0e6b299b1bdc57ce09b3fcbc",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_agent_state.py",
+      "remote_target": "/root/portal_bot/support_agent_state.py",
+      "bytes": 7466,
+      "payload_sha256": "81df82edd2a41c85aa414b239bba8e5e879f1a5ca959ded8fb89daff7de9a85e",
+      "git_sha256": "f10864ea2eac898971745cf58fa8a6cdb488afa8f276f0cdef89258dc5f64527",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_ai_service.py",
+      "remote_target": "/root/portal_bot/support_ai_service.py",
+      "bytes": 53123,
+      "payload_sha256": "b0e9bca9290c5071fdc053548f1090fbbea934ad49365a202c99f7b3ec0a98d2",
+      "git_sha256": "2bb2f5fbbf1362cba064e257cb87ab8efedd073b885134542320972c1fc4ae73",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_attachment_cleanup_service.py",
+      "remote_target": "/root/portal_bot/support_attachment_cleanup_service.py",
+      "bytes": 11096,
+      "payload_sha256": "7b45575b0eb98c9a7c040dc48c399fbf157e8f8f77363fa674445e0dea6a2b9c",
+      "git_sha256": "08baab889a35b9730d0f051916c5be2f41df11e2e8bac4c500b0e06957da2a84",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_bundle_ingest_service.py",
+      "remote_target": "/root/portal_bot/support_bundle_ingest_service.py",
+      "bytes": 31666,
+      "payload_sha256": "b4a200bd96168f4460072f502fef7ea8e3077ddc3f75fc6267ceeb8b19754f24",
+      "git_sha256": "432da7b6fe5832e56d689504dfd1b2da1b48592c8abcb792e1e081cac76714bf",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_bundle_upload_service.py",
+      "remote_target": "/root/portal_bot/support_bundle_upload_service.py",
+      "bytes": 24744,
+      "payload_sha256": "2c1d1fccafa87987c526fe9d1ef5432f67e121102abdaeff5dfebd725ce6afde",
+      "git_sha256": "f5aeb4176a8a891776bbd782ac996ea8be376896267e6eb134de9e5557dd1259",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_bundle_worker.py",
+      "remote_target": "/root/portal_bot/support_bundle_worker.py",
+      "bytes": 8183,
+      "payload_sha256": "264bdcc8eed2207a8b7a69c3c36a4f87f427019c69baa415cf2557c18b5c1f8d",
+      "git_sha256": "4902c5201c0ef06b6ecf335cd85a40d1b2558cb7516918f70cc1b332813aa779",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_case_context.py",
+      "remote_target": "/root/portal_bot/support_case_context.py",
+      "bytes": 17340,
+      "payload_sha256": "7ee6761b4ffb4c1dbd09dde698a0f58085d75845924bd9d3e8a906f2062b9c76",
+      "git_sha256": "2e52c750860a4f92506fee8afe0aff248996f4daec258ca87ed7c8a61c0b0a7e",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_mode_service.py",
+      "remote_target": "/root/portal_bot/support_mode_service.py",
+      "bytes": 19879,
+      "payload_sha256": "2eaafb4235047b6339908e2a8154c390260d53154796acf7762527efe3688319",
+      "git_sha256": "93c222f5d42662602d85d2766398eac932a379f9e0a9a071a57c14d3f995896a",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_work_actions.py",
+      "remote_target": "/root/portal_bot/support_work_actions.py",
+      "bytes": 23754,
+      "payload_sha256": "1a2d37d18adc8bbde630267c10034336044aab8d7d789f8eeea3795e871a2e07",
+      "git_sha256": "d2c004eb91fcf74258b8b18a1bc0803bd307dedc3503423cbafb2986ded7f716",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/support_work_service.py",
+      "remote_target": "/root/portal_bot/support_work_service.py",
+      "bytes": 28931,
+      "payload_sha256": "271d8540a96b16af374685df813cf7afb9abeff894c7f6a040fefc14828e605a",
+      "git_sha256": "18e21ca2a9a64d6c7ad7ba69e0d22d351d887d3f0d5c316e26f74805dffa5fb3",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/sync_clients.py",
+      "remote_target": "/root/portal_bot/sync_clients.py",
+      "bytes": 4747,
+      "payload_sha256": "19863571c58eacb9072733334dd1065e07f184c52d91570adadd1a38ea61d9fc",
+      "git_sha256": "d4dcba46500c92246c294fc72b3fa32235b8cb93f1bfcc9103fd85532e280627",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/telegram_buttons.py",
+      "remote_target": "/root/portal_bot/telegram_buttons.py",
+      "bytes": 3844,
+      "payload_sha256": "e82d2d5d15251abd017600643ab1aba287dc916d7ab4c0ddbb5627acb73bc604",
+      "git_sha256": "e6dfa227c092773bc134fdb67c5d07d17c55265a5d5344e5f11ec469d6d2a9bf",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/telegram_delivery_service.py",
+      "remote_target": "/root/portal_bot/telegram_delivery_service.py",
+      "bytes": 6060,
+      "payload_sha256": "10007ce61176d3e16e8541658f42e6eb38c6844948819798bbf6127fe24e9540",
+      "git_sha256": "ea29a8ee9abfcfe9e76485bb1f89c2bad5c552e95b261378eb2f920b477fc318",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/telegram_emoji.py",
+      "remote_target": "/root/portal_bot/telegram_emoji.py",
+      "bytes": 4113,
+      "payload_sha256": "cb085de80a07684fba548b8130ed2c7e8d9cc50e1b4707e45ad89102e433f65b",
+      "git_sha256": "3479fa5b03e84538ebab229ee350bc39c77da2e8fcf7872c77ce15355bede771",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/telegram_profile.py",
+      "remote_target": "/root/portal_bot/telegram_profile.py",
+      "bytes": 3319,
+      "payload_sha256": "fc10f10aab0d98623718858aa3971687dcdb339c1eadaa7efe744a59e68e7081",
+      "git_sha256": "ef2b3e73effd70fa625f83e9faa66de7924f17984ecb148defa0b58f32fb63e0",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/telegram_rich_messages.py",
+      "remote_target": "/root/portal_bot/telegram_rich_messages.py",
+      "bytes": 16473,
+      "payload_sha256": "e19426a8d6fbe0e6b5937fc13406d4209d20062822afaaa41c8917790764b78e",
+      "git_sha256": "1fc08b14a8c2837f09a986398f7a62f5377b4e0a05c53db402a3040ee06dc4f1",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/tickets_repo.py",
+      "remote_target": "/root/portal_bot/tickets_repo.py",
+      "bytes": 12389,
+      "payload_sha256": "48754cd2bc0f2d487a1f647ec9a3ab20a73e0cf3c3eddffd748be63173e7b5ac",
+      "git_sha256": "0f09cab5f56e702ccaa58704541fb81a80cd45cf07027b40d1e936c67ce26cb3",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/transport_catalog.py",
+      "remote_target": "/root/portal_bot/transport_catalog.py",
+      "bytes": 9769,
+      "payload_sha256": "4309bf52f2e27b3fccff3cb5962f58a02ad15da4e4ac5fb3d68a97f0c21cb4ad",
+      "git_sha256": "e4feb2a5ead6c52b97b3c94c655d46a5edd4463a7994810eccc226ed2b9a566b",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/warp_service.py",
+      "remote_target": "/root/portal_bot/warp_service.py",
+      "bytes": 22922,
+      "payload_sha256": "64ca2cdf4d529dd32c8174d7e7f357aa15055adc770e9a841c1f2705a9047f3d",
+      "git_sha256": "0158ca02690236f32fa78dfccad7481e61c064d9a41caaba89387fab821342e0",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/web_auth_service.py",
+      "remote_target": "/root/portal_bot/web_auth_service.py",
+      "bytes": 22858,
+      "payload_sha256": "88d823e9ab5e56415127a0f36e2c366f0ac1c06945169ec1fe8f0ab464bb6bb8",
+      "git_sha256": "751eab5b19a466f7a6cd524d5418dab7e1b3b9f5642b3272025e6313bb2887dc",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "portal_bot/worker.py",
+      "remote_target": "/root/portal_bot/worker.py",
+      "bytes": 60696,
+      "payload_sha256": "fd6289fcc29af0525727e347b92ae1abb8209c0711c26846b90abf92bb78047f",
+      "git_sha256": "fd6289fcc29af0525727e347b92ae1abb8209c0711c26846b90abf92bb78047f",
+      "same_rehearsed_git_bytes": false
+    },
+    {
+      "source_path": "shared/access-matrix.json",
+      "remote_target": "/root/shared/access-matrix.json",
+      "bytes": 3329,
+      "payload_sha256": "3a8dc2cd5d05ed68635e84c5ae1299e2c2e2c1dae20ec9a4ca0acb0bb04771d4",
+      "git_sha256": "e6631eade802ced9984f56b142bb0494c365d917b4035ca9c6b3be4b7c928838",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/beta-known-limitations.json",
+      "remote_target": "/root/shared/beta-known-limitations.json",
+      "bytes": 4932,
+      "payload_sha256": "d1b9d01d83c8465590e4b0ab8035201775c5b3b0f230a30cdeef41ee8577396e",
+      "git_sha256": "1703a1d974283db9d372a0209e01db58e2161eac933a64f68d91cfe4d52603dc",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/commercial-contract.json",
+      "remote_target": "/root/shared/commercial-contract.json",
+      "bytes": 4535,
+      "payload_sha256": "e8d00b85251fa57af3b43fc19b479ee5d3f3fb56653b6f26cbfa3df804db47c0",
+      "git_sha256": "fca9efda08455ca7591315c648c2328164c947d2d8b219182c39b5751d964594",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/commercial-contract.schema.json",
+      "remote_target": "/root/shared/commercial-contract.schema.json",
+      "bytes": 5208,
+      "payload_sha256": "4eea044461fabf74d87d6f85023754b64ef479bffe484c6fab612f538c8460be",
+      "git_sha256": "7ad39a649e2c84e552765928bfee3648e83a63eda3d3707319088bf3077bdf7c",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/admin/admin-v2.openapi.json",
+      "remote_target": "/root/shared/contracts/admin/admin-v2.openapi.json",
+      "bytes": 321598,
+      "payload_sha256": "8c5af4f32756aab30c3c64aea3d516ff8dd68d9c5293366d9ffe2f2d6d81627a",
+      "git_sha256": "7b14811fddb5b3e6d76e46af009a3e50a7845729ae824de0e4174ea776157dc4",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/marketing/marketing-governance.v1.json",
+      "remote_target": "/root/shared/contracts/marketing/marketing-governance.v1.json",
+      "bytes": 11483,
+      "payload_sha256": "cdd45a160047e67fc49a70cb20f735f8a8f922bf2cbf4b1ac3620ee577675778",
+      "git_sha256": "eb2f6f67e8f41754365347ac7b33bf70bd6f562684c9a84a834071046d4578e4",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/marketing/marketing-governance.v1.schema.json",
+      "remote_target": "/root/shared/contracts/marketing/marketing-governance.v1.schema.json",
+      "bytes": 4987,
+      "payload_sha256": "04944835a28f9862117c8a06dc692ceda393d68f34ef9cd04c8961f63ecb342e",
+      "git_sha256": "a39f65da5605a09bbb4316d53746c80ab60df1749404dc1ea8e88e738b321342",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/marketing/winback-pilot.v1.json",
+      "remote_target": "/root/shared/contracts/marketing/winback-pilot.v1.json",
+      "bytes": 3492,
+      "payload_sha256": "b1fd4b38f3ed1b2a3d74ec8d287ab1d76391ce1aaf172f87c387c42cd694b6cb",
+      "git_sha256": "1c3caecf5342ff7467075a405d5418f97ab7db5e8aa1e4894bb615385d73bfe8",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/marketing/winback-pilot.v1.schema.json",
+      "remote_target": "/root/shared/contracts/marketing/winback-pilot.v1.schema.json",
+      "bytes": 5627,
+      "payload_sha256": "94763e9de659384e4e8422befdc13d812533b18f5b18c52c63a5d1e1405b2af7",
+      "git_sha256": "32ca05fb6d05fb4fcba420f9ab355352f62d747c6573112cc7411fa93db95534",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/network/smart-dns-policy.v1.json",
+      "remote_target": "/root/shared/contracts/network/smart-dns-policy.v1.json",
+      "bytes": 1007,
+      "payload_sha256": "e1fc65599d7ec855c2d36f4d50c6cb1b5d907a1bad54d6f3493072f8f4ab5406",
+      "git_sha256": "b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/observability/data-inventory.json",
+      "remote_target": "/root/shared/contracts/observability/data-inventory.json",
+      "bytes": 10963,
+      "payload_sha256": "c45380256e831360b04462c97ca3661b0303df407ac2062265254dff9074e307",
+      "git_sha256": "f33a23726e0c90481ac0d9151a300225b91b57075e1b25b9ce981c8b5fe1a8bf",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/observability/error-catalog.json",
+      "remote_target": "/root/shared/contracts/observability/error-catalog.json",
+      "bytes": 38795,
+      "payload_sha256": "bac8a43d7644df0aeffcc62b5a0cfe10124b6a2fb1c44288c25d9f2748d2c3de",
+      "git_sha256": "1cef07aea2f859891794546569431d0e6aab91c6921729389fd63013f3002af1",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/observability/error-catalog.schema.json",
+      "remote_target": "/root/shared/contracts/observability/error-catalog.schema.json",
+      "bytes": 2224,
+      "payload_sha256": "f582083d3ced93e8f7ff38e6c1f4a29ac6df83abaf9d80adce4bc9c5dd414063",
+      "git_sha256": "194b435616b211f9b4a216e43e1e376aaa31c5be1f4025a5f4523afad85744c8",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/observability/observability-event.schema.json",
+      "remote_target": "/root/shared/contracts/observability/observability-event.schema.json",
+      "bytes": 12084,
+      "payload_sha256": "1e0141e713409cb60d48f1daf514499dc711ed67ff4ec0039bb95aa4e60b99fd",
+      "git_sha256": "24ae72442f778d7f1334ae0a4bf4d774738e4de275707b29420ec733af65cc17",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/observability/release-health-baseline.v1.schema.json",
+      "remote_target": "/root/shared/contracts/observability/release-health-baseline.v1.schema.json",
+      "bytes": 5565,
+      "payload_sha256": "10eb9a9eb5f78b7dabb63b2a544bdf3626d91023ccd31dcd7395ed4e7c6dc1a9",
+      "git_sha256": "32a5228abbc0b6a7b460c258d5199a85d248d43a1db3c913119d59612d921a1b",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/performance/performance-budgets.v1.json",
+      "remote_target": "/root/shared/contracts/performance/performance-budgets.v1.json",
+      "bytes": 17756,
+      "payload_sha256": "9edc0b96ee1b7e762342d8ff72f974d61898540fd5c4174ff0cc8d6583d6fca2",
+      "git_sha256": "9c2cca66d4675ec863d86fddf58f0772c6f11e0f535d4709a2056d9a3da82378",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/support/signed-envelope.schema.json",
+      "remote_target": "/root/shared/contracts/support/signed-envelope.schema.json",
+      "bytes": 838,
+      "payload_sha256": "48d84efdf6897e3b87e98f4ee54fe59da8c409ade14a4bc51a5abe53c280c9cd",
+      "git_sha256": "20d39cbb4497fc5c57108be4d048ac72df64df259fb602d38f8f936d1d91d096",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/support/support-collection-policy.schema.json",
+      "remote_target": "/root/shared/contracts/support/support-collection-policy.schema.json",
+      "bytes": 2669,
+      "payload_sha256": "c24d0a88284d8f5229d0e9fd83d500d5747b0d7c5aad992d11562d8ece8ebaba",
+      "git_sha256": "c533ec66ee67cb843499165527c7786fba30910845a326005a5514979ca7ec95",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/contracts/support/support-key-set.schema.json",
+      "remote_target": "/root/shared/contracts/support/support-key-set.schema.json",
+      "bytes": 1497,
+      "payload_sha256": "587176757e2c70f764f70a097d6466ebf11fc96d5114ce97a0e82eba5ff3fcc4",
+      "git_sha256": "c9ba4b797820da4c4660427427a941ff19e1c2e20e543431ee570085b23ee4c0",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/dependency-contract.json",
+      "remote_target": "/root/shared/dependency-contract.json",
+      "bytes": 1098,
+      "payload_sha256": "d331b68775f2e7f4119a54faf2605f0683669fbb1ac1fd2e461e1eb06707828e",
+      "git_sha256": "5f3c8f2cbecad9c883fa94a7df9ab5e74757f67a15a26efe1c9b88fad21c67ec",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/design-tokens.json",
+      "remote_target": "/root/shared/design-tokens.json",
+      "bytes": 9751,
+      "payload_sha256": "f5e8fe1b7c3e88436e0af4ba97b89712b7ab81842893f2e3e9731e800fc0dd12",
+      "git_sha256": "77a4b684f5ff87b58185077143a32d641d3eba388c0e46240b4248104fdd1458",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/design-tokens.schema.json",
+      "remote_target": "/root/shared/design-tokens.schema.json",
+      "bytes": 12815,
+      "payload_sha256": "7656e6dbb32a2d2d68e56ee6384a443f7efb48f8ccb39cb4f6f43d5a5f06e50c",
+      "git_sha256": "77a46b4ce5e34533d0570dc2a89adbcda6f7c3c6f64d8137d48ccd3301e2611f",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/marketing-governance.source.json",
+      "remote_target": "/root/shared/marketing-governance.source.json",
+      "bytes": 7329,
+      "payload_sha256": "b0a6324d52d733c4ec3e67ec5c731f1e6d946df580eee66f28e56a3b297e5356",
+      "git_sha256": "2ec7f3698fcfdc7fe085e8ff6ebafd1c59dd5d785ee961130fe752f900651e6a",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/product-facts.json",
+      "remote_target": "/root/shared/product-facts.json",
+      "bytes": 1683,
+      "payload_sha256": "a2a6eada76e937bc266393239263dc7c20c1e9399e494f33978bf7465dcc6a0c",
+      "git_sha256": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/promo-slots.json",
+      "remote_target": "/root/shared/promo-slots.json",
+      "bytes": 4097,
+      "payload_sha256": "7f93e420143f3ed9f0d3e40564a7a21e8a6b4ec5cc5e6ba423bc32b0ff995517",
+      "git_sha256": "3369033f764e064b68e1e0613b7a9c356701fa6708d8c48b1674d39001dceb9b",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/public-urls.json",
+      "remote_target": "/root/shared/public-urls.json",
+      "bytes": 1036,
+      "payload_sha256": "9db38cc2ef5a2658fad53b5fb6ca90aed07ba02012a213ddb2e4765bb25c4c2c",
+      "git_sha256": "022f7ba577714bdc0bffd3cc00254309af346ef0c8fc62fe9c52e40d72a0de67",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/release-1.2.0-candidate-stage-policy.json",
+      "remote_target": "/root/shared/release-1.2.0-candidate-stage-policy.json",
+      "bytes": 15817,
+      "payload_sha256": "c6cfed020f8432daa2ae746fe1bc85b045302652374d6ce8c8421a6a6e543d23",
+      "git_sha256": "b1f66479e5a272de79968319584f8609a2dadc75227ca1ffceba509a00c293e4",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/release-1.2.0-stop-ship-regressions.json",
+      "remote_target": "/root/shared/release-1.2.0-stop-ship-regressions.json",
+      "bytes": 5911,
+      "payload_sha256": "dbe322645bc9d7da9e343f90267675e51dbf12f793eaf470f4a54562e6129e4a",
+      "git_sha256": "982d41833a5678875ddb0ef314fbe94870b55952b0a256efaecb281556ad843d",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/support-agent-policy.json",
+      "remote_target": "/root/shared/support-agent-policy.json",
+      "bytes": 1509,
+      "payload_sha256": "55c1de42063ac213fce52fd26aee8d766886d25e532ce717f581cad3768e38aa",
+      "git_sha256": "04f3bce9766adb8f996bccb62e4ee8e38b21c7140d48d027d419c765abaa13f8",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/support-ai-knowledge.json",
+      "remote_target": "/root/shared/support-ai-knowledge.json",
+      "bytes": 48588,
+      "payload_sha256": "d29439143669320dd2ccb339d5fd48c5d4be55098efe943def46fc78e5db4d9a",
+      "git_sha256": "e473af34cb251a7572923957d3c1a004a6fcc7c9be861b0806b5a12696a09c54",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/tariff-catalog.json",
+      "remote_target": "/root/shared/tariff-catalog.json",
+      "bytes": 7423,
+      "payload_sha256": "40aca86e329d6de0e3333fdf49814770898de07726d81a01be53edd854e860c4",
+      "git_sha256": "85b23b6192e8198fcbb00f097449ccb0c99afb92aca6f16e93fbcada44505514",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/trust-and-guides.json",
+      "remote_target": "/root/shared/trust-and-guides.json",
+      "bytes": 88587,
+      "payload_sha256": "3640f510dfbe9b181ea67a32d6311f1494b9130d76f6678909a9e89591489e59",
+      "git_sha256": "5e92147538a2a30bc19b4d1fc0fa977dd2e5d1be7d2d2e9852668c5f901f46c8",
+      "same_rehearsed_git_bytes": true
+    },
+    {
+      "source_path": "shared/winback-pilot.source.json",
+      "remote_target": "/root/shared/winback-pilot.source.json",
+      "bytes": 2627,
+      "payload_sha256": "2c68e8926fb3959c3b8b7ef10c2925404d2aae8eb28d862b380613b73d448a14",
+      "git_sha256": "e851fab1c8186bcd1a194b799de3a1b8f94145331bce75541a161e1215fc9234",
+      "same_rehearsed_git_bytes": true
+    }
+  ],
+  "changed_runtime_files": [
+    "portal_bot/worker.py"
+  ],
+  "schema_and_dependency_inputs_equal_deployed": {
+    "portal_bot/models.py": true,
+    "portal_bot/migrations.py": true,
+    "portal_bot/db.py": true,
+    "portal_bot/requirements.txt": true,
+    "portal_bot/account_foundation_service.py": true,
+    "portal_bot/support_account_service.py": true
+  },
+  "frontend_inputs_unchanged_from_local_quality": {
+    "marketing": true,
+    "webapp": true,
+    "adminapp": true,
+    "shared": true,
+    "copy": true
+  },
+  "current_local_quality_15_step_reexecuted": false,
+  "new_candidate_created": false,
+  "production_code_deployed": false,
+  "backup_retain_count": 50,
+  "normalization": "CRLF_TO_LF_ONLY"
+}

@@ -591,10 +591,13 @@ Observed 2026-09-09: backend `7d37005` and static inputs `0392052` are deployed
 on Brain; static release `20260909045925` passed all 887 file hashes and
 canonical public HTTP readbacks. Previous releases are preserved in a verified
 server-side archive and the admin rollback pointer. Operator bootstrap/session
-checks passed, but actual Telegram OIDC login is blocked at the admin callback;
-Allowed URLs configuration is pending owner access. Do not disable bootstrap
-or claim operator/release acceptance from these bounded checks. See the
-[dated execution and retained evidence](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-PLATFORM-DEPLOY-2026-09-09.md).
+checks passed. After the owner registered the admin callback on 2026-09-09,
+Telegram returned its login page instead of the callback error. The owner then
+completed a real OIDC login and step-up; the server audit confirms both in the
+same active production session. No role change was executed. Full capability
+and release acceptance remain separate; the legacy bootstrap setting is unchanged.
+See the [real operator login evidence](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-OPERATOR-LIVE-2026-09-09.md)
+and the [dated deployment execution and retained evidence](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-PLATFORM-DEPLOY-2026-09-09.md).
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
 - static deploy packages `marketing/out`, `webapp/out`, and `adminapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp,adminapp}` symlinks
@@ -1248,6 +1251,8 @@ Node shaping repo truth:
 - `infra/portal-node-qdisc.service` restores the configured qdisc after reboot
 
 ### Owned AWG peer revocation worker
+
+Observed 2026-09-09: backend `d3eba89` has two owned DE targets configured on Brain. Four unique per-device keys replaced the old shared peers; the persisted and live peer sets contain exactly two keys per interface. Three scheduled worker reports had zero failed targets. The historical shared-key counter does not represent active peers. Current installed-client and full A04 acceptance remain open. See [the production migration evidence](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-A04-PRODUCTION-MIGRATION-2026-09-09.md).
 
 `portal_bot/awg_lab_peer_worker.py` runs inside the existing worker when
 `AWG_LAB_PEER_TARGETS_FILE` names a JSON target file. Empty configuration leaves

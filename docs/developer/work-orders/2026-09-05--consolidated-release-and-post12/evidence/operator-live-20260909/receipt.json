@@ -1,0 +1,37 @@
+{
+  "schema": "pokrov-operator-live-evidence-v1",
+  "frontend_commit": "03920525bfc3993591a39d21e35bbe2e7e1d663d",
+  "backend_commit": "d3eba8945e74eca025e2a8589be110d070fb562d",
+  "real_oidc_login": "PASS",
+  "same_session_oidc_step_up": "PASS",
+  "rbac_role_unchanged": true,
+  "all_capability_routes": "28_AUTHENTICATED_UI_READS_WITH_EXPLICIT_SOURCE_LIMITS",
+  "source_pins_from_preceding_runtime_readback": true,
+  "files": [
+    {
+      "path": "oidc-provider-entry-after-owner.json",
+      "sha256": "8ae09f50e41452277c9c9f30db7efd846faf85732a5a91d397448997267b5124",
+      "bytes": 402,
+      "captured_sha256": "9da4905490e667144b10f103a89734c28e1f8d7bf025d82215c02d0fbb4a70d9",
+      "captured_bytes": 416
+    },
+    {
+      "path": "read-real-oidc.py",
+      "sha256": "1c9278566713a4309580c7fd8549288f8276a78448d1ec30bf82abd696ef5562",
+      "bytes": 3025
+    },
+    {
+      "path": "real-oidc-login-step-up.json",
+      "sha256": "b8d4a755828d10abbb0fdc1e52f3022cbd259c357b6d4d8b709c38a23ae72fad",
+      "bytes": 862,
+      "captured_sha256": "4df9cef8be888dd0d07689d6a2b70269091715421745d2b7792eec66f09206f6",
+      "captured_bytes": 891
+    },
+    {
+      "path": "authenticated-routes.json",
+      "sha256": "e6ff57455ab4a14ab2aaeba75b05c78d96b26981bbb619d954a0fc7c36a9bda9",
+      "bytes": 10418
+    }
+  ],
+  "receipt_hash_scope": "Git index bytes; original capture hashes retained for line-ending normalization"
+}

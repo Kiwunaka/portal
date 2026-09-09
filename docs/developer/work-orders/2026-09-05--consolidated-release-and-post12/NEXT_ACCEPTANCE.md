@@ -1,5 +1,9 @@
 # Текущие условия следующей приёмки
 
+[Operator live](EXECUTION-OPERATOR-LIVE-2026-09-09.md): реальный Telegram OIDC-вход и step-up одной сессии PASS; 28 страниц открылись с явными границами источников. Полные expiry/revoke/role-denial и legacy cutover ещё не закрыты. Прежняя ошибка callback ниже относится к состоянию до настройки BotFather.
+
+[A04 production migration](EXECUTION-A04-PRODUCTION-MIGRATION-2026-09-09.md) завершила shared-key migration и включение worker на Brain (`d3eba89`). Далее — текущие Android/Windows подключения, отзыв/expiry через установленный клиент, внешний OIDC/step-up и final candidate. Прежние pending activation записи ниже относятся к более ранним срезам.
+
 [Platform deploy 9 сентября](EXECUTION-PLATFORM-DEPLOY-2026-09-09.md): backend
 `7d37005`, static release `20260909045925` опубликованы и проверены по hashes.
 Следующие проверки: admin Allowed URLs/OIDC login/step-up; per-device миграция

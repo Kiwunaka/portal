@@ -1,0 +1,84 @@
+{
+  "started_at": "2026-09-09T05:14:25.625976+00:00",
+  "mode": "APPLY_OWNED_KEYS_ONLY",
+  "server_changes": [
+    {
+      "interface": "pokrovawg2",
+      "backup_path": "/root/backups/r12-awg-migration-20260909/pokrovawg2.before.conf",
+      "backup_sha256": "ebbfb2191c5f57825b6a6e5d0fcdf807811a72811dbfe1249e73dbba53299157",
+      "new_config_sha256": "e212b4c5bc1fe51f37868613c82796ad3c7277721ee19f19cec33bb25b14bcc8",
+      "old_peer_retained": true,
+      "new_peers_added": 2,
+      "live_peer_count": 3,
+      "saved_config_preserves_old_bytes": true,
+      "status": "PASS"
+    },
+    {
+      "interface": "pokrovawg31",
+      "backup_path": "/root/backups/r12-awg-migration-20260909/pokrovawg31.before.conf",
+      "backup_sha256": "60dd8351e0d6ea5128f14dfbbe77116185174ab5f5a5abab8f9b4159a643a32e",
+      "new_config_sha256": "02518e82e7d0390b46be2b16c2bff1087281e638d691abfa55fe17c8180e53d6",
+      "old_peer_retained": true,
+      "new_peers_added": 2,
+      "live_peer_count": 3,
+      "saved_config_preserves_old_bytes": true,
+      "status": "PASS"
+    }
+  ],
+  "material_changes": [
+    {
+      "profile": "awg2_lab",
+      "install_sha256": "64a9c9b73d01eedf96a7377df0b1c1c49d023546217184671b57cdd56750943b",
+      "new_public_key_sha256": "7543e467e575760a978bb2fc05ad08921e3fa209acb3a76dc5719b4ab4ae319f",
+      "single_active_material": true,
+      "old_rows_retained": true,
+      "old_rows_inactive": true,
+      "endpoint_readback_equal": true,
+      "guarded_http_replace": true,
+      "intent_id": "d8e7198a-1c01-43e9-9fc0-69a815574ade",
+      "status": "PASS"
+    },
+    {
+      "profile": "awg2_lab",
+      "install_sha256": "6c6320a20d86cc49c47e95cefa95d2ecfa3ef24a3816496458ee2f68cf46a250",
+      "new_public_key_sha256": "8a02b13865be5510e24c6e6dc2787bb1e72c20af4e44847279975e5625b885f4",
+      "single_active_material": true,
+      "old_rows_retained": true,
+      "old_rows_inactive": true,
+      "endpoint_readback_equal": true,
+      "guarded_http_replace": true,
+      "intent_id": "2567dba8-1a4c-451e-956b-551fff19d6bc",
+      "status": "PASS"
+    },
+    {
+      "profile": "awg31_lab",
+      "install_sha256": "64a9c9b73d01eedf96a7377df0b1c1c49d023546217184671b57cdd56750943b",
+      "new_public_key_sha256": "de1f8466af4424261d22c7b7687f9a0743e34ba7c4c5f054b36eec0487819e7c",
+      "single_active_material": true,
+      "old_rows_retained": true,
+      "old_rows_inactive": true,
+      "endpoint_readback_equal": true,
+      "guarded_http_replace": true,
+      "intent_id": "543d71a3-3e10-4097-a135-2429b9180bf0",
+      "status": "PASS"
+    },
+    {
+      "profile": "awg31_lab",
+      "install_sha256": "6c6320a20d86cc49c47e95cefa95d2ecfa3ef24a3816496458ee2f68cf46a250",
+      "new_public_key_sha256": "f63d4da16836259f5cf402b43ceb5d591c1c1c9742d4eaa93a21a1c2848be7a5",
+      "single_active_material": true,
+      "old_rows_retained": true,
+      "old_rows_inactive": true,
+      "endpoint_readback_equal": true,
+      "guarded_http_replace": true,
+      "intent_id": "a938afc3-5a14-42c6-9f29-35604f4871be",
+      "status": "PASS"
+    }
+  ],
+  "public_allowlists_changed": false,
+  "entitlements_changed": false,
+  "old_peers_removed": false,
+  "private_keys_exported_to_artifacts": false,
+  "status": "PASS_BOUNDED_KEYS_MIGRATED",
+  "completed_at": "2026-09-09T05:14:35.713665+00:00"
+}

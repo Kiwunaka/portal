@@ -1,0 +1,89 @@
+{
+  "started_at": "2026-09-09T05:21:47.936264+00:00",
+  "origin": "RU-origin",
+  "execution": "owned RU Pi, synthetic use of exact device material; not installed Android/Windows proof",
+  "build": {
+    "core_revision": "c7a11f7d2fd974726095ad7aa0619c055273dd15",
+    "promotion_revision_same_tree": "7444e531af6d9bf9b37d8f14e022f04182e447cc",
+    "binary_sha256": "1b369a9c1090ea367a3d73a3d4569fe4c5619ed5155a5652a29b013f1e7398b1",
+    "binary_bytes": 15952525,
+    "go_sha256": "21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9",
+    "git_sha256": "fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f",
+    "target": "linux_arm64",
+    "interop_runner_sha256": "10034eb7d78b66c0f06452ae9a1f132c0faa2c199810d52b34c05362d3c83f0a"
+  },
+  "checks": [
+    {
+      "profile": "awg2_lab",
+      "install_sha256": "64a9c9b73d01eedf96a7377df0b1c1c49d023546217184671b57cdd56750943b",
+      "returncode": 0,
+      "status": "PASS",
+      "classification": "passed",
+      "output_sha256": "f39aaa66548e7fda09a8e0246f451faaffdf401416d5e3708eeb83596ba2a084",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 22,
+          "rx_packets": 10,
+          "tx_max": 1296,
+          "rx_max": 1312,
+          "elapsed_ms": 1628
+        }
+      }
+    },
+    {
+      "profile": "awg2_lab",
+      "install_sha256": "6c6320a20d86cc49c47e95cefa95d2ecfa3ef24a3816496458ee2f68cf46a250",
+      "returncode": 0,
+      "status": "PASS",
+      "classification": "passed",
+      "output_sha256": "78c63200188a744b936a8ac1230fa5d52466aa1a21fbdc297f200cd1b2d824d6",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 20,
+          "rx_packets": 13,
+          "tx_max": 1296,
+          "rx_max": 1312,
+          "elapsed_ms": 246
+        }
+      }
+    },
+    {
+      "profile": "awg31_lab",
+      "install_sha256": "64a9c9b73d01eedf96a7377df0b1c1c49d023546217184671b57cdd56750943b",
+      "returncode": 0,
+      "status": "PASS",
+      "classification": "passed",
+      "output_sha256": "4a6b6b940ef3d45c59221b326b01c2fc3168a0ee9d6708c38da5f3d0982b7ff3",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 22,
+          "rx_packets": 13,
+          "tx_max": 1300,
+          "rx_max": 1328,
+          "elapsed_ms": 1274
+        }
+      }
+    },
+    {
+      "profile": "awg31_lab",
+      "install_sha256": "6c6320a20d86cc49c47e95cefa95d2ecfa3ef24a3816496458ee2f68cf46a250",
+      "returncode": 0,
+      "status": "PASS",
+      "classification": "passed",
+      "output_sha256": "b0ee66d36ff9d5b41c39fcdf11697429bd39ecabb798520acce6dc34c4fb656c",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 23,
+          "rx_packets": 13,
+          "tx_max": 1300,
+          "rx_max": 1328,
+          "elapsed_ms": 1229
+        }
+      }
+    }
+  ],
+  "raw_material_retained": false,
+  "status": "PASS_BOUNDED_FOUR_MIGRATED_KEYS",
+  "temporary_pi_binary_removed": true,
+  "completed_at": "2026-09-09T05:21:55.749475+00:00"
+}

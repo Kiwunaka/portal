@@ -1,0 +1,98 @@
+{
+  "checked_at": "2026-09-09T05:09:54.302788+00:00",
+  "mode": "READ_ONLY_MIGRATION_PLAN",
+  "targets": [
+    {
+      "profile": "awg2_lab",
+      "install_sha256": "6c6320a20d86cc49c47e95cefa95d2ecfa3ef24a3816496458ee2f68cf46a250",
+      "server_record_id": "de-awg2-20260827-01",
+      "generation": "awg2-lab-v1",
+      "endpoint_revision": "awg2-v1",
+      "material_age_hours": 96.7,
+      "interface": "pokrovawg2",
+      "service_active": true,
+      "persisted_config_sha256": "ebbfb2191c5f57825b6a6e5d0fcdf807811a72811dbfe1249e73dbba53299157",
+      "server_public_key_sha256": "0ac639e0b33427c98e347e8381f125557a961972028a661d2ae24cd09009f9d2",
+      "server_key_matches_material": true,
+      "old_peer_live": true,
+      "old_peer_persisted": true,
+      "live_peer_count": 1,
+      "saved_peer_count": 1,
+      "all_saved_peers_live": true
+    },
+    {
+      "profile": "awg2_lab",
+      "install_sha256": "64a9c9b73d01eedf96a7377df0b1c1c49d023546217184671b57cdd56750943b",
+      "server_record_id": "de-awg2-20260827-01",
+      "generation": "awg2-lab-v1",
+      "endpoint_revision": "awg2-v1",
+      "material_age_hours": 18.65,
+      "interface": "pokrovawg2",
+      "service_active": true,
+      "persisted_config_sha256": "ebbfb2191c5f57825b6a6e5d0fcdf807811a72811dbfe1249e73dbba53299157",
+      "server_public_key_sha256": "0ac639e0b33427c98e347e8381f125557a961972028a661d2ae24cd09009f9d2",
+      "server_key_matches_material": true,
+      "old_peer_live": true,
+      "old_peer_persisted": true,
+      "live_peer_count": 1,
+      "saved_peer_count": 1,
+      "all_saved_peers_live": true
+    },
+    {
+      "profile": "awg31_lab",
+      "install_sha256": "6c6320a20d86cc49c47e95cefa95d2ecfa3ef24a3816496458ee2f68cf46a250",
+      "server_record_id": "de-awg31-20260829-04-mobile-safe-trailers",
+      "generation": "awg31-lab-v4-mobile-safe-trailers",
+      "endpoint_revision": "awg31-v1",
+      "material_age_hours": 96.7,
+      "interface": "pokrovawg31",
+      "service_active": true,
+      "persisted_config_sha256": "60dd8351e0d6ea5128f14dfbbe77116185174ab5f5a5abab8f9b4159a643a32e",
+      "server_public_key_sha256": "3376e52ab6923556228c3151d586491d9c9818820ab6346fdbea9df093d15405",
+      "server_key_matches_material": true,
+      "old_peer_live": true,
+      "old_peer_persisted": true,
+      "live_peer_count": 1,
+      "saved_peer_count": 1,
+      "all_saved_peers_live": true
+    },
+    {
+      "profile": "awg31_lab",
+      "install_sha256": "64a9c9b73d01eedf96a7377df0b1c1c49d023546217184671b57cdd56750943b",
+      "server_record_id": "de-awg31-20260829-04-mobile-safe-trailers",
+      "generation": "awg31-lab-v4-mobile-safe-trailers",
+      "endpoint_revision": "awg31-v1",
+      "material_age_hours": 18.65,
+      "interface": "pokrovawg31",
+      "service_active": true,
+      "persisted_config_sha256": "60dd8351e0d6ea5128f14dfbbe77116185174ab5f5a5abab8f9b4159a643a32e",
+      "server_public_key_sha256": "3376e52ab6923556228c3151d586491d9c9818820ab6346fdbea9df093d15405",
+      "server_key_matches_material": true,
+      "old_peer_live": true,
+      "old_peer_persisted": true,
+      "live_peer_count": 1,
+      "saved_peer_count": 1,
+      "all_saved_peers_live": true
+    }
+  ],
+  "policies": {
+    "awg2_lab": {
+      "material_max_age_hours": 168,
+      "generation": "awg2-lab-v1",
+      "endpoint_revision": "awg2-v1",
+      "server_record_id": "de-awg2-20260827-01",
+      "expires_at": "2026-09-06T04:27:23.296532Z"
+    },
+    "awg31_lab": {
+      "material_max_age_hours": 168,
+      "generation": "awg31-lab-v4-mobile-safe-trailers",
+      "endpoint_revision": "awg31-v1",
+      "server_record_id": "de-awg31-20260829-04-mobile-safe-trailers",
+      "expires_at": "2026-09-06T04:27:23.296532Z"
+    }
+  },
+  "public_allowlists_empty": true,
+  "keys_generated": false,
+  "raw_connection_material_retained": false,
+  "status": "PASS"
+}

@@ -1,0 +1,19 @@
+{
+  "source": "38e3b3bc2a2f1f5381f344d5234a1275a2408f7e",
+  "signed_commit": "e18fc412a1c83a5b57ec5b2bc3a2fcbec9fb4775",
+  "tree": "8192c61f21c72aeb1bbc083009c99a579c961790",
+  "signature_valid": true,
+  "parent": "7d37005e4260995ab44ec3adb14bbffa3d42738b",
+  "pr": "https://github.com/Kiwunaka/portal/pull/245",
+  "branch": "codex/awg-worker-runtime-logging-signed-20260909",
+  "files": [
+    {
+      "path": "docs/operations/deployment-and-access.md",
+      "sha256": "0b48ecad3761683f570e31dbfe3f4b75a1b6c8faaf25d24f7ac0c6b275061b6d"
+    },
+    {
+      "path": "portal_bot/worker.py",
+      "sha256": "fd6289fcc29af0525727e347b92ae1abb8209c0711c26846b90abf92bb78047f"
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "checked_at": "2026-09-09T05:53:05.266444+00:00",
+  "origin": "brain-origin",
+  "worker_state": {
+    "MainPID": "6179",
+    "NRestarts": "0",
+    "ActiveState": "active"
+  },
+  "periodic_run_count": 3,
+  "latest_runs": [
+    {
+      "journal_timestamp_us": "1788933109639838",
+      "result": {
+        "targets": 2,
+        "retired": 0,
+        "shared_keys_blocked": 2,
+        "disk_removed": 0,
+        "live_removed": 0,
+        "failed_targets": 0,
+        "errors": {}
+      }
+    },
+    {
+      "journal_timestamp_us": "1788933141508920",
+      "result": {
+        "targets": 2,
+        "retired": 0,
+        "shared_keys_blocked": 2,
+        "disk_removed": 0,
+        "live_removed": 0,
+        "failed_targets": 0,
+        "errors": {}
+      }
+    },
+    {
+      "journal_timestamp_us": "1788933172835070",
+      "result": {
+        "targets": 2,
+        "retired": 0,
+        "shared_keys_blocked": 2,
+        "disk_removed": 0,
+        "live_removed": 0,
+        "failed_targets": 0,
+        "errors": {}
+      }
+    }
+  ],
+  "configuration_loaded": true,
+  "status": "PASS",
+  "server_readback": [
+    {
+      "profile": "awg2_lab",
+      "service_state": "active",
+      "live_peer_count": 2,
+      "saved_peer_count": 2,
+      "only_migrated_keys_present": true,
+      "config_sha256": "df5a76c9b396f1eccde29fb37c7dbfae0fae2dfc09596802394441125435730a"
+    },
+    {
+      "profile": "awg31_lab",
+      "service_state": "active",
+      "live_peer_count": 2,
+      "saved_peer_count": 2,
+      "only_migrated_keys_present": true,
+      "config_sha256": "d652e022094b021c554ea5f7032d3f4c6d2a8e745180dcefbe5f18ad73e5b624"
+    }
+  ],
+  "historically_shared_keys_blocked_explanation": "Retained historical rows remain classified as shared; direct migration removed these peers. Count is not active peer count."
+}

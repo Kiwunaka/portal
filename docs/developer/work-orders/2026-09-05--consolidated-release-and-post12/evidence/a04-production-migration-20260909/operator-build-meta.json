@@ -1,0 +1,18 @@
+{
+  "utc": "2026-09-09T05:53:17.238830+00:00",
+  "origin": "brain-origin",
+  "status": "PASS",
+  "data": {
+    "app": "pokrov-operator-api",
+    "api_schema": "admin-v2.1",
+    "portal_commit": "d3eba8945e74eca025e2a8589be110d070fb562d",
+    "deployed_at": "2026-09-09T05:51:38.204338Z",
+    "db_schema": null,
+    "active_client_release": null,
+    "core_release": null,
+    "expected_frontend_app": "pokrov-operator-center"
+  },
+  "credentials_exported": false,
+  "external_oidc_login_proven": false,
+  "session_logged_out": true
+}
