@@ -4779,6 +4779,10 @@ def run_migrations(engine: Engine) -> None:
                     conn.execute(text(f"ALTER TABLE node_health_samples ADD COLUMN {col} {ddl};"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_node_health_samples_node_code ON node_health_samples(node_code);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_node_health_samples_sampled_at ON node_health_samples(sampled_at);"))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_node_health_samples_node_sampled_id "
+            "ON node_health_samples(node_code, sampled_at, id);"
+        ))
 
         _ensure_capacity_domain_sqlite(conn)
         _ensure_admin_ops_domain_sqlite(conn)
@@ -5985,6 +5989,10 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _postgres_add_column_if_missing(conn, "node_health_samples", "ipv4_health", "VARCHAR(32)")
         _postgres_add_column_if_missing(conn, "node_health_samples", "ipv6_health", "VARCHAR(32)")
         _postgres_add_column_if_missing(conn, "node_health_samples", "transport_health_json", "TEXT")
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_node_health_samples_node_sampled_id "
+            "ON node_health_samples(node_code, sampled_at, id);"
+        ))
 
         _ensure_capacity_domain_postgres(conn)
         _ensure_admin_ops_domain_postgres(conn)

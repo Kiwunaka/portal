@@ -2370,6 +2370,9 @@ class SupportTicketMessage(Base):
 
 class NodeHealthSample(Base):
     __tablename__ = "node_health_samples"
+    __table_args__ = (
+        Index("ix_node_health_samples_node_sampled_id", "node_code", "sampled_at", "id"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     node_code = Column(String(20), index=True, nullable=False)

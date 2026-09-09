@@ -88,6 +88,21 @@ class NodeObservabilitySchemaTests(unittest.TestCase):
             }.issubset(cols)
         )
 
+    def test_latest_health_samples_index_survives_legacy_migration(self) -> None:
+        index_name = "ix_node_health_samples_node_sampled_id"
+
+        def columns():
+            with closing(sqlite3.connect(self.db_path)) as conn:
+                return [row[2] for row in conn.execute(f"PRAGMA index_info({index_name});")]
+
+        self.assertEqual(columns(), ["node_code", "sampled_at", "id"])
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            conn.execute(f"DROP INDEX {index_name};")
+        migrations = importlib.import_module("migrations")
+        migrations.run_migrations(self.db.engine)
+        migrations.run_migrations(self.db.engine)
+        self.assertEqual(columns(), ["node_code", "sampled_at", "id"])
+
 
 if __name__ == "__main__":
     unittest.main()
