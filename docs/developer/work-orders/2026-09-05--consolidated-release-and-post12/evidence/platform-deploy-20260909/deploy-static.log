@@ -1,0 +1,28 @@
+brain auth: key
+[cache-normalize] webapp: 0 html files
+[cache-normalize] adminapp: 0 html files
+[cache-normalize] marketing: 0 html files
+[bundle] webapp: 386 files, 11.8 MiB
+[bundle] webapp: 5.8 MiB in 0s
+[bundle] adminapp: 189 files, 4.6 MiB
+[bundle] adminapp: 779.5 KiB in 0s
+[bundle] marketing: 312 files, 16.9 MiB
+[bundle] marketing: 8.6 MiB in 0s
+[upload] webapp: 5.8 MiB -> /tmp/portal-static-20260909045925-webapp.tar.gz
+[extract] webapp: /var/www/portal/releases/20260909045925/webapp
+[deploy] webapp: complete in 0s
+[upload] adminapp: 779.5 KiB -> /tmp/portal-static-20260909045925-adminapp.tar.gz
+[extract] adminapp: /var/www/portal/releases/20260909045925/adminapp
+[deploy] adminapp: complete in 0s
+[upload] marketing: 8.6 MiB -> /tmp/portal-static-20260909045925-marketing.tar.gz
+[extract] marketing: /var/www/portal/releases/20260909045925/marketing
+[deploy] marketing: complete in 0s
+{"status":"ok","ts":"2026-09-09T04:58:47.937610","commercial":{"schema_version":"pokrov-commercial-contract-v1","commercial_revision":"2026-08-21.1","catalog_version":"2026-08-12-balanced-long-plans-v
+<!DOCTYPE html><html lang="ru" class="golos_text_e8a2f612-module__qa8VHa__variab
+<!DOCTYPE html><html lang="ru" class="scroll-smooth" data-scroll-behavior="smoot
+<!DOCTYPE html><html lang="ru"><head><meta charSet="utf-8"/><meta name="viewport
+operator_build_ok
+operator_routes_ok
+absent_or_fallback
+absent_or_fallback
+<!DOCTYPE html><html lang="ru" class="golos_text_e8a2f612-module__qa8VHa__variable" data-scroll-behavior="smooth"><head>

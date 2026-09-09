@@ -1,5 +1,12 @@
 # R12 — текущий результат и граница исполнения
 
+[Platform deploy 9 сентября](EXECUTION-PLATFORM-DEPLOY-2026-09-09.md): support
+PR #244 объединён; backend `7d37005` опубликован, 204 hashes и пять units PASS.
+Static `0392052` опубликован как `20260909045925`, 887 hashes/public readback
+PASS; предыдущие версии сохранены. Telegram отклоняет admin callback, вход
+и step-up открыты. AWG permanent activation, client candidate и выпуск открыты.
+Датированные pending-deploy записи ниже относятся к прежнему состоянию.
+
 [Source promotion 9 сентября](EXECUTION-SOURCE-PROMOTION-2026-09-09.md): platform
 PR #243, client #95 и Core #9 объединены через подписанные exact trees.
 Promotion tuple `0392052/c05b58b/7444e53` прошёл обычные CI всех трёх repos;

@@ -1,0 +1,48 @@
+{
+  "checked_at": "2026-09-09T05:03:50.426870+00:00",
+  "checks": [
+    {
+      "surface": "operator",
+      "origin": "current-origin",
+      "http_status": 200,
+      "redirect_uri": "https://admin.pokrov.space/",
+      "query_keys": [
+        "client_id",
+        "code_challenge",
+        "code_challenge_method",
+        "redirect_uri",
+        "response_type",
+        "scope",
+        "state"
+      ],
+      "response_bytes": 21,
+      "redirect_uri_required": true,
+      "login_page_detected": false
+    },
+    {
+      "surface": "cabinet",
+      "origin": "current-origin",
+      "http_status": 200,
+      "redirect_uri": "https://app.pokrov.space/",
+      "query_keys": [
+        "client_id",
+        "code_challenge",
+        "code_challenge_method",
+        "redirect_uri",
+        "response_type",
+        "scope",
+        "state"
+      ],
+      "response_bytes": 10540,
+      "redirect_uri_required": false,
+      "login_page_detected": true
+    }
+  ],
+  "operator_login": "BLOCKED_BY_PROVIDER_CONFIGURATION",
+  "provider_allowed_urls": "NOT_VERIFIED",
+  "cause": "Admin callback registration suspected; provider settings unavailable. Cabinet callback works with same shared client credentials.",
+  "tokens_or_identity_exported": false,
+  "actual_oidc_login": false,
+  "step_up": false,
+  "provider_docs": "https://core.telegram.org/bots/telegram-login"
+}

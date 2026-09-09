@@ -576,6 +576,15 @@ rehearsal database remain retained outside Git on Brain.
 
 ### Static sites deploy
 
+Observed 2026-09-09: backend `7d37005` and static inputs `0392052` are deployed
+on Brain; static release `20260909045925` passed all 887 file hashes and
+canonical public HTTP readbacks. Previous releases are preserved in a verified
+server-side archive and the admin rollback pointer. Operator bootstrap/session
+checks passed, but actual Telegram OIDC login is blocked at the admin callback;
+Allowed URLs configuration is pending owner access. Do not disable bootstrap
+or claim operator/release acceptance from these bounded checks. See the
+[dated execution and retained evidence](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-PLATFORM-DEPLOY-2026-09-09.md).
+
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
 - static deploy packages `marketing/out`, `webapp/out`, and `adminapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp,adminapp}` symlinks
 - the `adminapp` prebuild deterministically emits `__build.json` and

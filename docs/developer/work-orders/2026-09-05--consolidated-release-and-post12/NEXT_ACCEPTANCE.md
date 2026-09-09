@@ -1,5 +1,12 @@
 # Текущие условия следующей приёмки
 
+[Platform deploy 9 сентября](EXECUTION-PLATFORM-DEPLOY-2026-09-09.md): backend
+`7d37005`, static release `20260909045925` опубликованы и проверены по hashes.
+Следующие проверки: admin Allowed URLs/OIDC login/step-up; per-device миграция
+AWG shared keys и permanent worker activation; final client candidate и
+installed-client acceptance. Прежние pending source/deploy записи ниже
+исторические; public client release этим deployment не объявлен.
+
 [Source promotion 9 сентября](EXECUTION-SOURCE-PROMOTION-2026-09-09.md) завершён:
 `0392052/c05b58b/7444e53`, обычные CI и local quality PASS. Ключ checkout создан
 на Brain без рестарта. Далее — интеграция support-правки и Brain activation, миграция общих AWG lab keys,

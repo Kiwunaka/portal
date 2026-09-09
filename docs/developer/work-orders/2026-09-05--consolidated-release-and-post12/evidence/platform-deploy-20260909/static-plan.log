@@ -1,0 +1,10 @@
+[cache-normalize] webapp: 0 html files
+[cache-normalize] adminapp: 0 html files
+[cache-normalize] marketing: 0 html files
+[bundle] webapp: 386 files, 11.8 MiB
+[bundle] webapp: 5.8 MiB in 0s
+[bundle] adminapp: 189 files, 4.6 MiB
+[bundle] adminapp: 779.5 KiB in 0s
+[bundle] marketing: 312 files, 16.9 MiB
+[bundle] marketing: 8.6 MiB in 0s
+[plan-only] local static bundles validated and built; SSH deploy skipped
