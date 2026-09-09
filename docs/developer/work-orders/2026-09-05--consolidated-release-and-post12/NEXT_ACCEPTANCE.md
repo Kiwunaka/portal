@@ -1,5 +1,11 @@
 # Текущие условия следующей приёмки
 
+9 сентября: [G06 branch protection](EXECUTION-G06-ENFORCEMENT-2026-09-09.md)
+verified/I3. Три public promotion branches теперь имеют бесплатную защиту,
+3/3 hosted policy readbacks PASS; прежние access/billing observations ниже
+исторические. Это не снимает текущие executed cross-repository CI failures,
+отсутствие client PR или final candidate/runtime gates.
+
 9 сентября: [новое разрешение владельца](OWNER-DECISIONS-2026-09-09.md)
 снимает повторные согласования действий и решений в рамках текущего плана.
 [A04 key isolation](EXECUTION-A04-KEY-ISOLATION-2026-09-08.md) сохранён после

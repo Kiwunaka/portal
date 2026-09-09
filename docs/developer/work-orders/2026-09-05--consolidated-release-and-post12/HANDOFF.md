@@ -6,6 +6,12 @@
 текущего плана и необходимые решения без повторных согласований. Технические
 условия выпуска остаются открытыми.
 
+[G06 enforcement](EXECUTION-G06-ENFORCEMENT-2026-09-09.md): все три public
+promotion branches защищены; existing gate подтвердил 3/3 hosted policies PASS.
+Strict app-bound checks, PRs, signatures и admin enforcement включены; bypass
+actors отсутствуют. Owner exception ограничено direct 1.2.0 до закрытия релиза.
+G06 verified/I3; aggregate gate BLOCKED, проверки PR и final candidate открыты.
+
 [Draft source review](EXECUTION-PR-DRAFTS-2026-09-09.md): platform PR #242 и
 Core PR #8 опубликованы; platform guardrails и Core tests/Android/Windows
 reproducibility PASS, cross-repository checks FAIL на старых promotion bindings.

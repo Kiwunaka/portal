@@ -1,0 +1,10 @@
+{
+  "endpoint": "repos/Kiwunaka/pokrov-core/branches/main/protection/required_signatures",
+  "method": "POST",
+  "exit_code": 0,
+  "response": {
+    "url": "https://api.github.com/repos/Kiwunaka/pokrov-core/branches/main/protection/required_signatures",
+    "enabled": true
+  },
+  "stderr": ""
+}

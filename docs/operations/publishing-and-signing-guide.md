@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-09-04
+Last updated: 2026-09-09
 
 ## Document Status
 
@@ -182,6 +182,23 @@ release index, retained candidate evidence and same-byte promotion remain
 mandatory compensating controls outside the branch readback itself. The
 exception expires when release 1.2.0 is closed; a later release must authorize
 a new exception or return to team review.
+
+The exception applies to the Android/Windows 1.2.0 direct-distribution lane,
+including its prerelease candidates and same-byte stable promotion. It does
+not extend to store publication, an Apple release, Linux beta or a later
+version. Its expiry is release closure, not an indefinite account-wide waiver.
+
+On 2026-09-09 all three source repositories were observed public with admin
+access. The existing solo-safe branch policy was enabled and read back on
+`portal/master`, `POKROV-app/main` and `pokrov-core/main`: strict named GitHub
+Actions checks, required PRs with zero second-person approvals, admin
+enforcement, signed commits, linear history, resolved conversations, and no
+force pushes or deletions. No PR or force-push bypass actors are configured.
+The paid-private-protection waiver is therefore not needed for these current
+public branches. The second-person-review exception remains explicit; no
+independent review is claimed. [G06 evidence and exact settings](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-G06-ENFORCEMENT-2026-09-09.md)
+do not establish successful PR checks or authorize a release with a failed
+executed check. Re-read these settings before final promotion.
 
 The latest exact `WIN-003` default-path pass remains candidate.22 on isolated
 Windows 11: managed TUN, route/DNS change, authenticated DE egress,
