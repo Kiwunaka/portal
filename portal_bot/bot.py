@@ -3836,14 +3836,6 @@ def _tariff_choice_context() -> dict[str, object]:
         if paid_nodes
         else ("1 локация" if nodes else "1 локация")
     )
-    free_code = str(canonical_free_node_code(nodes) or "").strip().lower()
-    free_node = next((n for n in nodes if (getattr(n, "code", "") or "").strip().lower() == free_code), None)
-    free_label = (
-        _node_label_ru_bot(getattr(free_node, "code", "free"), getattr(free_node, "name", "NL Free"))
-        if free_node
-        else "🇳🇱 NL Free"
-    )
-
     s3 = _tariff_savings_pct("3_months")
     s6 = _tariff_savings_pct("6_months")
     s9 = _tariff_savings_pct("9_months")
@@ -3860,7 +3852,6 @@ def _tariff_choice_context() -> dict[str, object]:
     return {
         "paid_count": paid_count,
         "paid_list": paid_list,
-        "free_label": free_label,
         "savings": savings,
     }
 
@@ -3871,9 +3862,7 @@ def build_choose_tariff_rich_copy(*, show_trial: bool = True) -> RichMessageCopy
         show_trial=show_trial,
         paid_count=int(context["paid_count"]),
         paid_list=str(context["paid_list"]),
-        free_label=str(context["free_label"]),
-        trial_limit_gb=TRIAL_LIMIT_GB,
-        trial_device_limit=FREE_LIMIT_IP,
+        trial_days=int(_BOT_TRIAL_FACTS["days"]),
         paid_device_limit=PAID_LIMIT_IP,
         savings=list(context["savings"]),
     )
@@ -3883,13 +3872,12 @@ def build_choose_tariff_text(*, show_trial: bool = True) -> str:
     context = _tariff_choice_context()
     paid_count = int(context["paid_count"])
     paid_list = str(context["paid_list"])
-    free_label = str(context["free_label"])
     savings = list(context["savings"])
     savings_line = (" (" + ", ".join(savings) + ")") if savings else ""
 
     trial_block = (
-        f"*5 дней бесплатно* — {free_label}, до {TRIAL_LIMIT_GB} ГБ, "
-        f"до {FREE_LIMIT_IP} устройства, без карты.\n\n"
+        f"*{int(_BOT_TRIAL_FACTS['days'])} дней бесплатно в приложении*\n"
+        "Безлимитный трафик, 1 устройство, без карты.\n\n"
         if show_trial
         else ""
     )

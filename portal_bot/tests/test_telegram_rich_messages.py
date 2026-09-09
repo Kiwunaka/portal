@@ -77,9 +77,7 @@ def test_tariff_copy_is_native_text_and_escapes_runtime_values() -> None:
         show_trial=True,
         paid_count=3,
         paid_list="Москва <fast>, NL & DE",
-        free_label="NL <free>",
-        trial_limit_gb=5,
-        trial_device_limit=2,
+        trial_days=5,
         paid_device_limit=5,
         savings=["3 мес: -10%", "12 мес: -45%"],
     )
@@ -87,6 +85,10 @@ def test_tariff_copy_is_native_text_and_escapes_runtime_values() -> None:
     assert "<table bordered striped>" in copy.rich_html
     assert "<details>" in copy.rich_html
     assert "Москва &lt;fast&gt;, NL &amp; DE" in copy.rich_html
-    assert "NL &lt;free&gt;" in copy.rich_html
+    for body in (copy.rich_html, copy.fallback_html):
+        assert "5 дней бесплатно в приложении" in body
+        assert "Безлимитный трафик · 1 устройство" in body
+        assert "5 ГБ" not in body
+        assert "free" not in body
     assert "<table" not in copy.fallback_html
     assert "<blockquote expandable>" in copy.fallback_html
