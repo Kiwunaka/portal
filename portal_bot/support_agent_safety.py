@@ -366,19 +366,26 @@ def _redact_pii(text: str, *, redact_all_urls: bool = False) -> tuple[str, list[
     return legacy, categories
 
 
-def _local_escalation_reason(text: str) -> str | None:
+def redact_case_evidence(text: str) -> str:
+    """Sanitize a local file before truncation; file prose is never an instruction."""
+    cleaned, _ = _redact_pii(redact_support_text(text), redact_all_urls=True)
+    return "[содержимое скрыто]" if _hard_categories(cleaned) else cleaned
+
+
+def _local_escalation_reason(text: str, *, allow_case_reads: bool = False) -> str | None:
     if _HUMAN_REQUEST_RE.search(text):
         return "human_requested"
     if (
-        any(pattern.search(text) for pattern in _OUT_OF_SCOPE_RES)
+        any(pattern.search(text) for pattern in (_OUT_OF_SCOPE_RES[1:] if allow_case_reads else _OUT_OF_SCOPE_RES))
         or _ACCOUNT_SESSION_ACTION_RE.search(text)
+        or (allow_case_reads and _MUTATING_ACTION_RE.search(text))
         or (_MUTATING_ACTION_RE.search(text) and _MUTATION_TARGET_RE.search(text))
     ):
         return "out_of_scope"
     return None
 
 
-def classify_support_input(message: str) -> InputBoundaryResult:
+def classify_support_input(message: str, *, allow_case_reads: bool = False) -> InputBoundaryResult:
     if not isinstance(message, str) or not message.strip() or len(message) > _MAX_API_MESSAGE_CHARS:
         return InputBoundaryResult(
             disposition=InputDisposition.LOCAL_ESCALATE,
@@ -394,7 +401,7 @@ def classify_support_input(message: str) -> InputBoundaryResult:
             category_counts=_fixed_counts(hard_categories),
             escalation_reason="sensitive_input",
         )
-    local_reason = _local_escalation_reason(message)
+    local_reason = _local_escalation_reason(message, allow_case_reads=allow_case_reads)
     if local_reason:
         if local_reason == "human_requested":
             redacted, pii_categories = _redact_pii(message)

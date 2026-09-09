@@ -3846,6 +3846,7 @@ async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegr
         user_tg_id=tg_id,
         text=payload.body,
         has_attachment=has_attachment,
+        case_context_enabled=not _auth_user_is_recovery_scope(auth_user),
     )
     return {
         "ticket": _load_ticket_row(
@@ -3973,6 +3974,7 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
             user_tg_id=actor,
             text=payload.body,
             has_attachment=has_attachment,
+            case_context_enabled=not recovery_scope,
         )
     return {
         "ticket": _load_ticket_row(

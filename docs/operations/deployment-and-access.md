@@ -205,6 +205,17 @@ Repo-side deploy rule:
 - both provider paths use exact OpenRouter `POST /v1/chat/completions`. The facade rejects any other provider URL, model, or reasoning profile before a provider call. The locked profile is canonical `deepseek-v4-flash-0731` (`deepseek/deepseek-v4-flash-0731` on the wire), medium provider-managed reasoning with the private trace excluded, a 45-second provider timeout inside a 50-second total deadline, at most one request per eligible message, and at most two concurrent provider runs. The 45/50-second windows are also the exact-route defaults when their environment values are omitted. The request intentionally omits `max_tokens` for this reasoning model and sends exactly one system message plus one user message with no `tools`, `tool_choice`, retry, or continuation payload.
 - publish only the following secret-free harness configuration; keep the real key solely in the service environment through blank-at-rest `SUPPORT_AI_API_KEY`. `XCODY_API_KEY` remains a legacy compatibility alias only:
 
+The support case alternative is `SUPPORT_AI_MODEL=deepseek/deepseek-v4-flash-vision-exp`
+with the same medium reasoning and exact OpenRouter route. Its routing prefers
+Fireworks and denies provider data collection. Ticket case reads and local OCR
+follow [the support case boundary](../architecture/support-feedback-flow.md#read-only-ticket-case-context).
+Install `poppler-utils`, `tesseract-ocr`, and `tesseract-ocr-rus` for PDF/image
+text extraction; Pillow remains the existing pinned Python dependency.
+Model selection does not authorize sending raw images or customer/provider
+payloads. Keep per-service overrides in a secret-free EnvironmentFile loaded
+after the common `.env`; do not overwrite the common environment during a
+support-only rollout. Removing that override restores the common model settings.
+
 ```dotenv
 SUPPORT_AI_ENABLED=false
 SUPPORT_AI_AGENT_ENABLED=false

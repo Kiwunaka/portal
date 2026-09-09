@@ -108,11 +108,14 @@ class SupportSessionResolver:
         token = _stable_client_token("ticket", owner_id, str(ticket_id))
         return self._scope("ticket", owner_id, token)
 
-    def resolve_helpbot(self, validated_sender_id: int) -> SessionScope:
+    def resolve_helpbot(self, validated_sender_id: int, ticket_id: int | None = None) -> SessionScope:
         if type(validated_sender_id) is not int or validated_sender_id <= 0:
             raise SessionValidationError("helpbot_session_invalid")
         owner_id = str(validated_sender_id)
-        token = _stable_client_token("helpbot", owner_id)
+        if ticket_id is not None and (type(ticket_id) is not int or ticket_id <= 0):
+            raise SessionValidationError("helpbot_session_invalid")
+        token = (_stable_client_token("helpbot", owner_id, str(ticket_id))
+                 if ticket_id is not None else _stable_client_token("helpbot", owner_id))
         return self._scope("helpbot", owner_id, token)
 
 
