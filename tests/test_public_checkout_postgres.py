@@ -94,9 +94,9 @@ def test_two_http_requests_create_one_postgres_order(pg_checkout, monkeypatch, i
 
     monkeypatch.setattr(api, "create_rub_payment", provider)
 
-    def submit():
+    def submit(base_url):
         try:
-            response = TestClient(api.app).post("/api/payments/orders/create-public", json=payload)
+            response = TestClient(api.app, base_url=base_url).post("/api/payments/orders/create-public", json=payload)
         except TimeoutError:
             assert provider_result == "timeout"
             return None
@@ -108,7 +108,7 @@ def test_two_http_requests_create_one_postgres_order(pg_checkout, monkeypatch, i
 
     try:
         with ThreadPoolExecutor(max_workers=2) as pool:
-            futures = [pool.submit(submit) for _ in range(2)]
+            futures = [pool.submit(submit, base) for base in ("https://checkout-a.test", "https://checkout-b.test")]
             results = [future.result(timeout=25) for future in futures]
     finally:
         event.remove(engine, "before_cursor_execute", before_lock)
@@ -124,7 +124,7 @@ def test_two_http_requests_create_one_postgres_order(pg_checkout, monkeypatch, i
     for result in filter(None, results):
         assert result["order_id"] == provider_calls[0]
 
-    retry = TestClient(api.app).post("/api/payments/orders/create-public", json=payload)
+    retry = TestClient(api.app, base_url="https://checkout-b.test").post("/api/payments/orders/create-public", json=payload)
     assert retry.status_code == 200
     assert retry.json()["order_id"] == provider_calls[0]
     assert len(provider_calls) == 1
