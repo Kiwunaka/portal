@@ -1,5 +1,12 @@
 # Текущие условия следующей приёмки
 
+[Core source binding](EXECUTION-CORE-SOURCE-BINDING-2026-09-09.md): client
+`5fdfc8d` → Core `c7a11f7`, прежние runtime bytes воспроизведены двумя сборками
+каждой платформы. Local seed/proxy и hosted tuple с platform `0f6745d` PASS.
+Следующий шаг source promotion должен сохранить exact tuple и обязательные
+checks; ordinary PR failures на старых promotion lines не закрыты replay.
+Installed-client и full release acceptance остаются отдельной работой.
+
 [G04 executable CI](EXECUTION-G04-CI-2026-09-09.md): client PR #94 опубликован;
 Git LFS blocker снят screenshots budget $0/stop и свободного лимита.
 Exact tuple `de5d478/d57ead0/02a091c` и platform Guardrails PASS. Один Windows

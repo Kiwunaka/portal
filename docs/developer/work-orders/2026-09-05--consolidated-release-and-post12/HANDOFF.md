@@ -1,5 +1,12 @@
 # R12 — текущий результат и граница исполнения
 
+[Core source binding](EXECUTION-CORE-SOURCE-BINDING-2026-09-09.md): client
+`5fdfc8d` закреплён за `c7a11f7`; две сборки каждой платформы воспроизвели прежние
+AAR/DLL bytes. Seed/contracts и 100 Windows proxy cycles PASS. Hosted tuple
+`5fdfc8d/0f6745d/c7a11f7` PASS: 644 Flutter tests, Android direct/store и Linux;
+Windows skips отмечены отдельно. Client commit отправлен в PR #94. Обычные
+promotion-line checks FAIL; merge, deploy и новый candidate не выполнялись.
+
 [G04 executable CI](EXECUTION-G04-CI-2026-09-09.md): LFS budget $0/stop и
 free allowance подтверждены screenshots; 10 objects загружены, client PR #94
 создан. Exact `de5d478/d57ead0/02a091c` CI PASS: 644 Flutter tests, один
