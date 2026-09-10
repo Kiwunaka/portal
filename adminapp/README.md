@@ -528,6 +528,10 @@ production или outcome evidence.
 Полный список blocking reasons берётся из policy сервера; одобренный профиль
 сам по себе не означает разрешённый запуск кампании.
 
+Оба маршрута кампаний включены в cutover inventory: всего семь retained
+browser read patterns. Они сохраняют permission `legacy.admin.access`;
+остальные права страницы промо не дают доступ к этой отдельной панели.
+
 Сырые и недоверенные payload не возвращаются в браузер. Общие online-списки
 не содержат raw IP; IP-контекст загружается только внутри карточки конкретного
 пользователя.
@@ -587,3 +591,18 @@ SHA-256 текущего и rollback bundle плюс подтверждение 
 Наличие команды не доказывает, что rollback drill выполнялся. Публикация, production-мутации и установка таймеров на
 `mini` выполняются только по отдельному операторскому разрешению и не входят в
 обычную UI-проверку.
+
+### Переход со старой оболочки
+
+После exact build/authenticated parity и rollback proof Caddy перенаправляет
+GET/HEAD `app.pokrov.space/admin/*` на соответствующий маршрут
+`admin.pokrov.space`; `/admin` и `/admin/dashboard` ведут на главную.
+Ответ 302 с `Cache-Control: no-store` позволяет вернуть прежнюю маршрутизацию.
+Путь и query у остальных разделов сохраняются. API `/api/admin/*`, unsafe
+methods и сохранённые исходники старой оболочки не меняются; второго write path нет.
+Смена домена использует существующий OIDC-вход админки, не переносит cookie кабинета.
+
+`cutover_gates` в матрице с датой 2026-08-22 сохраняет исходный снимок
+внешних release gates. Текущее выполнение подтверждается отдельной exact-source
+evidence, а не статическим PASS в build metadata. До Caddy reload обязательны
+проверка совпадения опубликованных fingerprints, authenticated smoke и rollback.

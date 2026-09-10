@@ -163,7 +163,7 @@ def test_operator_center_cutover_matrix_covers_every_route_and_keeps_external_ga
         "capability_group_count": 7,
         "legacy_route_state_count": 0,
         "browser_v2_projection_count": 4,
-        "browser_legacy_read_pattern_count": 5,
+        "browser_legacy_read_pattern_count": 7,
         "direct_domain_dual_write_count": 0,
     }
     covered_routes = {

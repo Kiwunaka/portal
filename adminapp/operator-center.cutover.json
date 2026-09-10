@@ -9,7 +9,7 @@
     "capability_group_count": 7,
     "legacy_route_state_count": 0,
     "browser_v2_projection_count": 4,
-    "browser_legacy_read_pattern_count": 5,
+    "browser_legacy_read_pattern_count": 7,
     "direct_domain_dual_write_count": 0
   },
   "legacy_runtime": {
@@ -19,7 +19,9 @@
       "/api/admin/users/{tg_id}",
       "/api/admin/users/{tg_id}/investigation",
       "/api/admin/search",
-      "/api/admin/promo-slots"
+      "/api/admin/promo-slots",
+      "/api/admin/campaigns",
+      "/api/admin/campaigns/{campaign_id}/pilot-decision"
     ],
     "staged_media_upload": "/api/admin/promo-media",
     "write_rule": "stored-action-intent-single-domain-executor-no-dual-write",
@@ -65,7 +67,7 @@
     {
       "workspace": "money",
       "routes": ["/money", "/free-tier", "/access", "/payments", "/promos"],
-      "reads": ["/api/admin/v2/money/*", "legacy read-only promo slot projection"],
+      "reads": ["/api/admin/v2/money/*", "legacy read-only promo slot projection", "/api/admin/campaigns", "/api/admin/campaigns/{campaign_id}/pilot-decision"],
       "actions": ["payment.reconcile", "user.extend", "access_key.issue", "gift_code.create", "promo.*", "promo_slots.update"],
       "action_boundary": "stored action intent; one-time generated secrets only in successful execute response",
       "redaction_check": "provider/order/claim/grant/outbox raw payloads and stored codes are omitted",
