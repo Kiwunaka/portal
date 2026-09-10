@@ -93,6 +93,23 @@ pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, www.app.pokrov.
     reverse_proxy 127.0.0.1:8080
   }
 
+  # Enable only after exact admin build/authenticated parity and rollback proof.
+  # Keep legacy source and unsafe methods untouched for rollback compatibility.
+  @legacy_admin_read {
+    host app.pokrov.space
+    method GET HEAD
+    path /admin /admin/*
+  }
+  handle @legacy_admin_read {
+    header Cache-Control "no-store"
+    route {
+      @legacy_admin_root path /admin /admin/ /admin/dashboard /admin/dashboard/
+      redir @legacy_admin_root https://admin.pokrov.space/ 302
+      uri strip_prefix /admin
+      redir https://admin.pokrov.space{uri} 302
+    }
+  }
+
   @webapp_host host app.pokrov.space
   handle @webapp_host {
     header {
