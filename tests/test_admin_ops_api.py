@@ -2707,8 +2707,10 @@ def test_admin_payments_summary_counts_revenue_attention_and_abandoned(monkeypat
     assert body["attention"]["manual_review_count"] == 1
     assert body["attention"]["failed_count"] == 1
     assert body["attention"]["problem_count"] == 3
-    assert body["abandoned"]["buy_click_not_paid"] >= 1
-    assert body["abandoned"]["checkout_not_paid"] >= 1
+    assert body["abandoned"]["buy_click_not_paid"] is None
+    assert body["abandoned"]["checkout_not_paid"] is None
+    assert body["abandoned"]["cohorts"]["acquisition"]["checkout_started"] == 0
+    assert body["abandoned"]["cohorts"]["product"]["unit"] == "known_user"
     assert body["commercial_attribution"]["schema"] == "pokrov-commercial-attribution-read-model-v1"
     assert body["commercial_attribution"]["authority"]["telemetry_is_payment_truth"] is False
     assert {row["order_id"] for row in body["problem_orders"]} >= {"pending-ops-1", "manual-ops-1", "failed-ops-1"}

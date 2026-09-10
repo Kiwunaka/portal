@@ -44,12 +44,14 @@ export type PaymentOrder = {
   quote: { plan_code: string | null; amount: string | null; currency: string | null; campaign: string | null; campaign_revision: string | null; commercial_revision: string | null; terms_revision: string | null; base_amount_rub: string | null; hold_expires_at: string | null } | null;
 };
 
+export type PaymentCheckoutCohort = { checkout_started: number | null; paid: number | null; checkout_not_paid: number | null };
+
 export type PaymentSummary = {
   period: { key: PaymentPeriod; from: string | null; to: string | null };
   revenue: { currency: string | null; paid_count: number | null; amount: number | null; by_currency: Array<{ currency: string; paid_count: number | null; revenue: number | null }> };
   status_counts: Record<string, number | null>;
   attention: { pending_count: number | null; manual_review_count: number | null; failed_count: number | null; problem_count: number | null };
-  abandoned: { buy_clicks: number | null; checkout_started: number | null; paid: number | null; buy_click_not_paid: number | null; checkout_not_paid: number | null; note: string | null };
+  abandoned: { cohorts: { acquisition: PaymentCheckoutCohort | null; product: PaymentCheckoutCohort | null }; note: string | null };
   problem_orders: PaymentOrder[];
 };
 
@@ -347,6 +349,12 @@ export async function fetchPaymentSummary(period: PaymentPeriod, init?: ApiReque
   const revenue = data.revenue && typeof data.revenue === "object" ? data.revenue as Record<string, unknown> : {};
   const attention = data.attention && typeof data.attention === "object" ? data.attention as Record<string, unknown> : {};
   const abandoned = data.abandoned && typeof data.abandoned === "object" ? data.abandoned as Record<string, unknown> : {};
+  const cohorts = abandoned.cohorts && typeof abandoned.cohorts === "object" ? abandoned.cohorts as Record<string, unknown> : {};
+  const checkoutCohort = (value: unknown): PaymentCheckoutCohort | null => {
+    if (!value || typeof value !== "object") return null;
+    const row = value as Record<string, unknown>;
+    return { checkout_started: finite(row.checkout_started), paid: finite(row.paid), checkout_not_paid: finite(row.checkout_not_paid) };
+  };
   const rawPeriod = data.period && typeof data.period === "object" ? data.period as Record<string, unknown> : {};
   const statusCounts = data.status_counts && typeof data.status_counts === "object" ? data.status_counts as Record<string, unknown> : {};
   return {
@@ -364,7 +372,7 @@ export async function fetchPaymentSummary(period: PaymentPeriod, init?: ApiReque
     },
     status_counts: Object.fromEntries(Object.entries(statusCounts).map(([key, value]) => [key, finite(value)])),
     attention: { pending_count: finite(attention.pending_count), manual_review_count: finite(attention.manual_review_count), failed_count: finite(attention.failed_count), problem_count: finite(attention.problem_count) },
-    abandoned: { buy_clicks: finite(abandoned.buy_clicks), checkout_started: finite(abandoned.checkout_started), paid: finite(abandoned.paid), buy_click_not_paid: finite(abandoned.buy_click_not_paid), checkout_not_paid: finite(abandoned.checkout_not_paid), note: text(abandoned.note) },
+    abandoned: { cohorts: { acquisition: checkoutCohort(cohorts.acquisition), product: checkoutCohort(cohorts.product) }, note: text(abandoned.note) },
     problem_orders: Array.isArray(data.problem_orders) ? data.problem_orders.map(paymentOrder).filter((row): row is PaymentOrder => row !== null) : [],
   };
 }

@@ -127,6 +127,14 @@ separately binds campaign/offer/order/grant and renewal/reversal lineage.
 Literal IP referrers are discarded before persistence and cannot become an
 automatic acquisition source; an absent source remains `unknown`.
 
+The payments screen also keeps these cohorts separate: `Сессии сайта без оплаты`
+counts browser sessions in the confirmed handoff/checkout chain, while
+`Пользователи без оплаты` counts distinct known users in the product cohort.
+Each card shows how many in its own cohort started checkout. Multiple orders
+or overlapping app/bot events do not multiply a person; an unrelated payment
+cannot erase another cohort's missing payment. No combined abandonment count
+is published. Revenue and the paid-order ledger retain their order-based units.
+
 Commercial capacity is a separate entitlement-owned projection. The
 `capacity_automation` object on `GET /api/admin/campaigns` shows exact commercial
 revision/SHA, active units, the 300-unit limit, current band, 70% pause and

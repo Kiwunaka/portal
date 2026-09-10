@@ -2729,11 +2729,11 @@ export async function installAdminApiMock(
         status_counts: options.revenueScenario === "populated" ? { paid: 4 * multiplier, pending: 1, manual_review: 1, failed: 1 } : { paid: 0, pending: 0, manual_review: 0, failed: 0 },
         attention: options.revenueScenario === "populated" ? { pending_count: 1, manual_review_count: 1, failed_count: 1, problem_count: 3 } : { pending_count: 0, manual_review_count: 0, failed_count: 0, problem_count: 0 },
         abandoned: {
-          buy_clicks: options.revenueScenario === "populated" ? 12 * multiplier : 0,
-          checkout_started: options.revenueScenario === "populated" ? 8 * multiplier : 0,
-          paid: options.revenueScenario === "populated" ? 4 * multiplier : 0,
-          buy_click_not_paid: options.revenueScenario === "populated" ? 8 * multiplier : 0,
-          checkout_not_paid: options.revenueScenario === "populated" ? 4 * multiplier : 0
+          buy_clicks: null, checkout_started: null, paid: null, buy_click_not_paid: null, checkout_not_paid: null,
+          cohorts: {
+            acquisition: { cohort: "first_touch_in_period", unit: "browser_session", checkout_started: options.revenueScenario === "populated" ? 12 * multiplier : 0, paid: options.revenueScenario === "populated" ? 4 * multiplier : 0, checkout_not_paid: options.revenueScenario === "populated" ? 8 * multiplier : 0 },
+            product: { cohort: "known_user_open_in_period", unit: "known_user", checkout_started: options.revenueScenario === "populated" ? 8 * multiplier : 0, paid: options.revenueScenario === "populated" ? 4 * multiplier : 0, checkout_not_paid: options.revenueScenario === "populated" ? 4 * multiplier : 0 },
+          },
         },
         mismatch_queues: options.revenueScenario === "populated" ? { manual_review: 1, callback_failed: 1 } : {},
         problem_orders: options.revenueScenario === "populated" ? [revenueOrders[0]] : []
