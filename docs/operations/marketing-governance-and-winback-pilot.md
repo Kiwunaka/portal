@@ -105,6 +105,13 @@ automatically. Scale beyond the 20-payment pilot is capped at 50 and still
 requires a separate owner decision after the 30-day observation and ready
 holdout evidence.
 
+The API exposes a winner only after the observation window closes, holdout is
+ready, every configured creative has a mature primary metric and no stop guard
+is active. A missing variant keeps the result at `continue_collecting`; equal
+values return `keep` with no winner. The same restriction applies to the raw
+decision pack shown by Operator Center and the generated postmortem. A unique
+maximum is a descriptive pilot result, not proof of statistical significance.
+
 Operator Center exposes this read model in the promo workspace. The
 machine-readable postmortem refuses a winner until the primary metric, holdout,
 observation window and stop guards are all ready.

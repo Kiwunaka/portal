@@ -239,19 +239,32 @@ def build_winback_decision_pack(
         and current >= _as_utc(ends_at) + timedelta(days=int((pilot.get("decision") or {}).get("minimum_observation_days") or 30))
     )
     holdout_ready = holdout.get("state") == "ready"
+    expected_variants = {item["variant"] for item in pilot["creatives"]}
+    ready_variants = [
+        item
+        for item in primary["variants"]
+        if item.get("variant") in expected_variants
+        and item.get("metric_state") == "ready"
+        and item.get("net_revenue_30d_per_capacity_unit") is not None
+    ]
+    comparison_ready = {item["variant"] for item in ready_variants} == expected_variants
     winner: dict[str, Any] | None = None
-    if primary["state"] == "ready" and holdout_ready:
-        ready_variants = [
-            item
-            for item in primary["variants"]
-            if item.get("metric_state") == "ready"
-            and item.get("net_revenue_30d_per_capacity_unit") is not None
-        ]
-        if ready_variants:
-            best = max(
-                ready_variants,
-                key=lambda item: float(item["net_revenue_30d_per_capacity_unit"]),
-            )
+    if (
+        not automatic_stop_reasons
+        and observation_complete
+        and primary["state"] == "ready"
+        and holdout_ready
+        and comparison_ready
+    ):
+        best = max(
+            ready_variants,
+            key=lambda item: float(item["net_revenue_30d_per_capacity_unit"]),
+        )
+        tied_variants = sum(
+            item["net_revenue_30d_per_capacity_unit"] == best["net_revenue_30d_per_capacity_unit"]
+            for item in ready_variants
+        )
+        if tied_variants == 1:
             winner = {
                 "variant": str(best.get("variant") or ""),
                 "metric": "net_revenue_30d_per_capacity_unit",
@@ -261,12 +274,12 @@ def build_winback_decision_pack(
 
     if automatic_stop_reasons:
         recommendation = "stop"
-    elif not observation_complete or primary["state"] != "ready" or not holdout_ready:
+    elif not observation_complete or primary["state"] != "ready" or not holdout_ready or not comparison_ready:
         recommendation = "continue_collecting"
     elif winner is not None:
         recommendation = "owner_review_scale_50"
     else:
-        recommendation = "change_copy"
+        recommendation = "keep"
     if recommendation not in WINBACK_DECISION_STATES:
         raise ValueError("winback_decision_state_invalid")
     return {
