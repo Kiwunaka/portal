@@ -22,7 +22,7 @@ Local checks: support suite initially 235 passed plus 184 subtests; focused upda
 
 ## Deployment
 
-PASS: candidate `0d66797d57bbdd0a90b143425fbddb75f9c4def1` is deployed on Brain. The support surface is exactly hash-matched, both services are active with NRestarts=0 and effective DeepSeek 4.1 high settings. Delayed Brain health and current-origin HTTPS health pass. Postdeploy synthetic paid/access and PNG/PDF scenarios pass (`postdeploy.jsonl`); real customer conversations and RU-origin delivery were NOT_REQUESTED.
+PASS: candidate `0d66797d57bbdd0a90b143425fbddb75f9c4def1` is deployed on Brain. The support surface is exactly hash-matched, both services are active with NRestarts=0 and effective DeepSeek 4.1 high settings. Delayed Brain health and current-origin HTTPS health pass. Postdeploy synthetic paid/access and PNG/PDF transport, schema, file-reading and redaction checks pass (`postdeploy.jsonl`). The file answer missed a literal keyword screen by paraphrasing timeout as an error waiting for a response, and included an unsupported sentence about who decides refunds. These are retained model-quality limitations, not hidden successes; real customer conversations and RU-origin delivery were NOT_REQUESTED.
 
 Process deviation: GitHub rejected the ordinary merge because the local commits were unsigned. The PowerShell command sequence continued into the authorized support deployment despite the earlier command failure. Production therefore briefly precedes source promotion. No branch protection was bypassed. Source promotion is being completed using the documented GitHub-signed, tree-equal snapshot procedure. Original feature commits and runtime receipts remain retained. Independent review was not performed.
 
