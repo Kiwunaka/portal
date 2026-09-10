@@ -339,7 +339,7 @@ def add_ticket_message(
         sender_role=role,
         visibility=normalized_visibility,
         macro_code=normalized_macro or None,
-        body=msg_body[:2000],
+        body=msg_body[:12500 if role == "assistant" and normalized_visibility == "public" else 2000],
         media_type=(media_type or "").strip()[:32] or None,
         media_file_id=(media_file_id or "").strip()[:256] or None,
         media_payload=(media_payload or "").strip()[:2000] or None,

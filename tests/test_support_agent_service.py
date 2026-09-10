@@ -31,6 +31,7 @@ def test_recovery_ticket_does_not_load_case_or_files():
     asyncio.run(service.generate(surface="ticket", authenticated_owner_id="123", ticket_id=42,
                                   message="Помогите восстановить доступ", case_context_enabled=False))
     assert harness.requests[0].case_loader is None
+    assert harness.requests[0].case_tools is None
 
 
 def test_helpbot_conversation_is_scoped_to_ticket():

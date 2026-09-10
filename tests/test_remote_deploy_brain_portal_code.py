@@ -93,6 +93,8 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
         self.assertIn("portal_shared_json_preflight.log", preflight)
         self.assertIn("admin_v2.roles", import_preflight)
         self.assertIn("operator_observability_service", import_preflight)
+        self.assertIn("installed-lock.sha256", import_preflight)
+        self.assertIn("node --check support_pi/runner.mjs", import_preflight)
         self.assertIn("/root/portal_bot.deploy-staging/20260705T010203Z-1/portal_bot/api.py", promote)
         self.assertIn("install -D -m 0644", promote)
         self.assertIn("/root/portal_bot.deploy-backups/20260705T010203Z-1/root/portal_bot/api.py", restore)

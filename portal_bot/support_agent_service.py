@@ -74,6 +74,7 @@ class SupportReplyResult:
     suggested_actions: tuple[Mapping[str, str], ...]
     should_escalate: bool
     source: str
+    case_actions: tuple = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -400,11 +401,15 @@ class SupportAgentService:
                 return self._local_result(message, scope.client_session_id)
 
         case_loader = None
+        case_tools = None
         if case_context_enabled and ticket_id is not None and surface in {"ticket", "helpbot"}:
             from support_case_context import load_case
             async def case_loader(analyze_attachment):
                 return await load_case(int(authenticated_owner_id), int(ticket_id), attachment_bot,
                                        analyze_attachment=analyze_attachment)
+            if canonical_support_model(self.config.model) == DEEPSEEK_41_MODEL:
+                from support_case_tools import CaseTools
+                case_tools = CaseTools(int(authenticated_owner_id), int(ticket_id), attachment_bot)
 
         try:
             result = await self._harness.run(
@@ -414,6 +419,7 @@ class SupportAgentService:
                     message=message,
                     now=float(self.time_source()),
                     case_loader=case_loader,
+                    case_tools=case_tools,
                     safe_diagnostics=tuple(
                         sorted((safe_diagnostics or {}).items())
                     ),
@@ -424,11 +430,16 @@ class SupportAgentService:
             return self._local_result(message, scope.client_session_id)
         if isinstance(result, SupportAgentResult) and result.status == "silent":
             return SupportReplyResult("", scope.client_session_id, (), False, "support_agent")
+        if (case_tools is not None and isinstance(result, SupportAgentResult)
+                and result.status == "escalate" and not result.case_actions):
+            result = replace(result, case_actions=({"name": "request_operator", "queue": "general",
+                                                   "reason": "Нужна проверка оператором поддержки."},))
         if isinstance(result, SupportAgentResult) and result.answer_origin in {"case_model", "case_local"}:
             return SupportReplyResult(result.reply, scope.client_session_id, _fallback_actions(),
-                                      result.status == "escalate", "support_agent")
+                                      result.status == "escalate", "support_agent", result.case_actions)
         if not isinstance(result, SupportAgentResult) or result.status != "answer":
-            return self._agent_transfer_result(scope.client_session_id)
+            transfer = self._agent_transfer_result(scope.client_session_id)
+            return replace(transfer, case_actions=result.case_actions) if isinstance(result, SupportAgentResult) else transfer
         if result.answer_origin not in {"model", "grounded_local", "code_owned"}:
             return self._agent_transfer_result(scope.client_session_id)
         return SupportReplyResult(

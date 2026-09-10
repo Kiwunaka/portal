@@ -1737,6 +1737,46 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual([message["sender_role"] for message in messages], ["user", "assistant"])
         self.assertIn("Try free", messages[-1]["body"])
 
+    def test_pi_notes_and_handoff_commit_with_reply_and_reject_stale_turn(self) -> None:
+        from dataclasses import replace
+        from db import SessionLocal
+        from models import SupportTicket, SupportTicketMessage
+        from support_agent_service import SupportReplyResult
+        from tickets_repo import add_ticket_message
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        self.api.SUPPORT_AI_CONFIG.enabled = True
+        settings = replace(self.api.SUPPORT_AGENT_SERVICE.settings, agent_enabled=True)
+        for stale in (False, True):
+            async def generate(**kwargs):
+                if stale:
+                    with SessionLocal() as session:
+                        add_ticket_message(session, ticket_id=kwargs["ticket_id"], sender_tg_id=1001,
+                                           sender_role="user", body="Уточнение")
+                        session.commit()
+                return SupportReplyResult(
+                    "По базе оплата есть. Нужна проверка доступа. " * 70, "session", (), True, "support_agent",
+                    ({"name": "write_case_note", "text": "Внутренние факты для оператора"},
+                     {"name": "request_operator", "reason": "Проверить выдачу", "queue": "billing"}))
+            with patch.object(self.api.SUPPORT_AGENT_SERVICE, "settings", settings), patch.object(
+                self.api.SUPPORT_AGENT_SERVICE, "generate", side_effect=generate), patch.object(
+                self.api, "_telegram_send_message", new_callable=AsyncMock):
+                response = self.client.post("/api/tickets", headers=user_hdrs,
+                    json={"subject": "Оплата", "body": "Проверьте доступ"})
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertNotIn("Внутренние факты", response.text)
+            ticket_id = response.json()["ticket"]["id"]
+            with SessionLocal() as session:
+                ticket = session.get(SupportTicket, ticket_id)
+                notes = session.query(SupportTicketMessage).filter_by(ticket_id=ticket_id, visibility="internal").count()
+                self.assertEqual(notes, 0 if stale else 2)
+                self.assertEqual(bool(ticket.escalated_at), not stale)
+                if not stale:
+                    self.assertEqual(ticket.queue, "billing")
+                    self.assertGreater(len(response.json()["ticket"]["messages"][-1]["body"]), 2000)
+                    self.assertIn("передано в очередь оператора", response.json()["ticket"]["messages"][-1]["body"])
+                ticket.status = "closed"
+                session.commit()
+
     def test_ticket_followup_appends_ai_hint_for_user_messages_only(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}

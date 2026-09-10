@@ -427,6 +427,29 @@ def test_owned_case_can_answer_without_kb_match(harness_case_factory, plan, orig
     assert '"amount":99' in case.adapter.requests[0]["messages"][1]["content"]
 
 
+@pytest.mark.parametrize("invalid", [False, True])
+def test_pi_case_preserves_staged_actions_only_after_valid_output(harness_case_factory, monkeypatch, invalid):
+    import support_pi_bridge
+    case = harness_case_factory(name="pi_case", input_mode="safe", retrieval="none",
+                                provider_plan="unused", store_plan="ok")
+    async def start():
+        return True
+    tools = SimpleNamespace(start=start, actions=[{"name": "request_operator", "queue": "billing", "reason": "Проверка доступа"}],
+                            history=[], has_attachments=False, facts={}, trace=["read_account", "read_payments", "request_operator"])
+    case.adapter.config = SimpleNamespace(api_key="private")
+    async def complete(**kwargs):
+        assert kwargs["tools"] and "pi-agent-core" in kwargs["prompt"]
+        return {"content": "broken" if invalid else json.dumps({"schema_version": "1", "status": "escalate",
+                "reply": "По базе оплата есть, доступа нет. Нужна проверка оператором."}),
+                "turns": 3, "latency_ms": 10, "usage": {"prompt_tokens": 100, "completion_tokens": 50, "cached_tokens": 0}}
+    monkeypatch.setattr(support_pi_bridge, "run_pi_case", complete)
+    request = replace(case.request, message="Проверьте оплату", case_loader=lambda _: None, case_tools=tools)
+    result = asyncio.run(case.harness.run(request))
+    assert result.answer_origin == ("case_local" if invalid else "case_model")
+    assert result.case_actions == (() if invalid else tuple(tools.actions))
+    assert result.usage.prompt_tokens == 100 and case.adapter.call_count == 0
+
+
 def test_owned_case_stops_for_operator(harness_case_factory):
     case = harness_case_factory(name="operator_case", input_mode="safe", retrieval="none",
                                 provider_plan="unused", store_plan="ok")
