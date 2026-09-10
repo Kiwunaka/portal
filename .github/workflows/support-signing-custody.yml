@@ -9,9 +9,16 @@ on:
       - scripts/verify_support_signing_custody.py
       - tests/test_verify_support_signing_custody.py
       - tests/test_support_signing_custody_workflow.py
+      - scripts/provision_support_mode_runtime.py
+      - tests/test_provision_support_mode_runtime.py
       - requirements-ops.txt
   workflow_dispatch:
     inputs:
+      provision_brain_runtime:
+        description: "Install the existing signer on owned Brain using a prepared forced-command SSH key; does not enable issuance"
+        required: false
+        default: false
+        type: boolean
       recipient_key_id:
         description: "Owned support worker recipient key ID; leave both recipient inputs empty for custody-only verification"
         required: false
@@ -89,6 +96,31 @@ jobs:
         with:
           name: support-signing-custody-${{ steps.revisions.outputs.platform }}
           path: ${{ runner.temp }}/support-signing-custody-receipt.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Provision signer to prepared Brain receiver
+        if: github.event_name == 'workflow_dispatch' && inputs.provision_brain_runtime
+        working-directory: platform
+        env:
+          POKROV_SUPPORT_MODE_SIGNING_KEY_ID: ${{ vars.POKROV_SUPPORT_MODE_SIGNING_KEY_ID }}
+          POKROV_SUPPORT_MODE_SIGNING_PUBLIC_KEY_B64: ${{ vars.POKROV_SUPPORT_MODE_SIGNING_PUBLIC_KEY_B64 }}
+          POKROV_SUPPORT_MODE_SIGNING_PRIVATE_KEY_B64: ${{ secrets.POKROV_SUPPORT_MODE_SIGNING_PRIVATE_KEY_B64 }}
+          POKROV_SUPPORT_MODE_CODE_SECRET: ${{ secrets.POKROV_SUPPORT_MODE_CODE_SECRET }}
+          POKROV_SUPPORT_PROVISION_SSH_KEY: ${{ secrets.POKROV_SUPPORT_PROVISION_SSH_KEY }}
+        run: >-
+          python scripts/provision_support_mode_runtime.py
+          --client-seed "${{ github.workspace }}/POKROV-app/config/support-signing.seed.json"
+          --platform-revision "${{ steps.revisions.outputs.platform }}"
+          --client-revision "${{ steps.revisions.outputs.client }}"
+          --output "${{ runner.temp }}/support-runtime-provision-receipt.json"
+
+      - name: Upload public runtime provisioning receipt
+        if: github.event_name == 'workflow_dispatch' && inputs.provision_brain_runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: support-runtime-provision-${{ steps.revisions.outputs.platform }}
+          path: ${{ runner.temp }}/support-runtime-provision-receipt.json
           if-no-files-found: error
           retention-days: 30
 

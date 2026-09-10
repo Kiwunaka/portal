@@ -338,6 +338,33 @@ fail before publication. With both inputs empty, the workflow remains a
 custody-only check. Dispatch inputs enter the validator as environment data,
 never shell source.
 
+The explicit `provision_brain_runtime=true` dispatch installs that same signer
+through `scripts/provision_support_mode_runtime.py`. The receiver must first
+be installed as root-owned code on Brain with the exact candidate's public seed.
+Use a temporary Ed25519 SSH key restricted by `authorized_keys` to this receiver
+with `restrict,command="... --receive --client-seed ..."`; place only that
+temporary SSH private key in `POKROV_SUPPORT_PROVISION_SSH_KEY`. Remove the
+authorized-key entry and hosted temporary secret after the dispatch. The
+existing signer and code secret are transmitted in memory over the pinned
+Brain SSH connection, never runner files, commands, logs or artifacts.
+The canonical destination is `82.21.114.104:29374`; its authenticated Ed25519
+host key is pinned in the script. A changed host key requires a separately
+authenticated operator readback before updating the pin.
+
+Both sender and receiver verify the signing key against the client public
+seed. The receiver requires the isolated `pokrov-api` identity and a root-owned
+configuration directory, then atomically creates `/etc/pokrov/support-mode.env`
+as root `0600`. An existing different configuration is rejected; an identical
+retry is read-only. This procedure does not rotate a mismatched key, restart
+services or enable issuance. Its artifact contains only public bindings and
+installation status. Before adding the file to the API's systemd
+`EnvironmentFile`, retain the required RBAC/audit, exact-client, rotation and
+rollback evidence above. Rollback removes the support-mode drop-in and restarts
+the API; it preserves the root-only signing file, existing accepted archives,
+worker recipient custody and API isolation. Rotation to another public signer
+requires a matching client pin and its own acceptance; this receiver will not
+overwrite the current configuration.
+
 Verify the artifact signature against the exact client pin and its recipient
 against the worker before configuring `POKROV_SUPPORT_SIGNED_KEY_SET_JSON`.
 Renew the signed public envelope before its expiry, retaining the recipient
