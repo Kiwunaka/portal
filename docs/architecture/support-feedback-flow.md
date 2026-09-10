@@ -213,8 +213,8 @@ attachment failure is labelled `unreadable_or_over_limit` while completed
 payment/access facts remain available. No local OCR or alternate-provider
 fallback runs. Only the supported multimodal profiles can analyze attachments.
 
-The model may summarize the collected facts without a KB keyword match. It has
-no model-visible tools or write access. Unresolved discrepancies retain a useful
+The legacy supported profiles summarize collected facts without a KB keyword
+match. DeepSeek 4.1 high uses the pi case loop described below. Unresolved discrepancies retain a useful
 summary for the operator; provider/output-validation failure returns a local
 summary of collected payment/access facts. Assigned, in-progress and closed
 tickets suppress AI. Before persistence, the latest public user message must
@@ -222,6 +222,48 @@ still match the pre-generation revision; a newer user/operator/assistant message
 discards the stale reply. Recovery sessions retain text-only KB handling and
 never enter the case/file/diagnostic loader. Standalone app assistant behavior
 is unchanged.
+
+## Pi investigation for ticket conversations
+
+DeepSeek 4.1 high ticket/helpbot turns use pinned `@earendil-works/pi-agent-core`
+0.85.1 in a disposable Node process through `support_pi_bridge.py`. The existing
+owner/session lock, rate/concurrency limits and 50-second total budget remain.
+Pi chooses and executes up to 12 tools across at most six model calls; each
+serialized provider request remains limited to 30,000 characters. The exact
+OpenRouter route and high reasoning are preserved, with no output-token cap.
+Reasoning replay metadata stays only in transient pi memory, never ticket text,
+audit output or process logs. Only tool names, turn counts and token totals are
+reported. Errors return the existing operator path without model error bodies.
+
+`support_case_tools.py` exposes account/access, same-account payments, payment
+and access events, diagnostic summaries, the two bounded attachments, stored
+metrics of up to eight active account-key nodes, and approved KB search. Reads
+are chosen on demand; reading the account does not call Vision or the payment
+provider. Node metrics include sample time and are explicitly historical, not a
+new network probe. Each call rechecks ticket ownership and pending-message
+revision. No tool accepts an account ID, arbitrary file path, shell command,
+provider URL or invoice ID. Unknown/unlinked purchases still need an operator.
+The prior public messages and presence of attachments accompany the question.
+
+The three write tools stage an internal case note, an operator queue request,
+and a proposed review of payment/access/refund/connection. A proposed review is
+an internal note, not an executable admin intent or permission to mutate the
+account. Later calls may replace the draft of the same kind. Only a validated
+final answer can carry these drafts to API/helpbot persistence. Under the
+existing ticket/revision lock they commit together with the public response;
+a stale turn or failed transaction commits neither. A model escalation also
+queues the operator when no explicit queue tool was called. The code adds the
+public handoff confirmation only to the transaction that records `waiting_on=
+operator` and `escalated_at`. Subsequent AI turns are suppressed while that
+operator wait remains. Internal notes are excluded from customer history.
+Public assistant replies retain up to 12,000 model characters plus the short
+server handoff footer (12,500 storage ceiling); user/internal notes retain their
+existing 2,000-character ceiling.
+
+There is no arbitrary filesystem write, source/config editing, provider mutation,
+refund, compensation or access provisioning tool. The standalone app assistant
+and recovery text-only path retain their existing behavior. Runtime prerequisites
+and dependency-lock checks are in [deployment and access](../operations/deployment-and-access.md#support-pi-runtime).
 
 ## xCody Knowledge Refresh
 

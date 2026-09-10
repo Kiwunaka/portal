@@ -7650,7 +7650,7 @@ def _ticket_message_detail_row(msg) -> dict[str, Any]:
         "sender_role": msg.sender_role,
         "visibility": str(getattr(msg, "visibility", "public") or "public")[:16],
         "macro_code": str(getattr(msg, "macro_code", "") or "")[:48] or None,
-        "body": str(msg.body or "")[:2000],
+        "body": str(msg.body or "")[:12500 if msg.sender_role == "assistant" else 2000],
         "attachment": _safe_ticket_attachment(msg),
         "created_at": _safe_iso(msg.created_at),
     }
@@ -7836,6 +7836,10 @@ async def _maybe_append_support_ai_reply(
             return False
         if revision is None and int(ticket.user_tg_id) != int(user_tg_id):
             return False
+        if revision is not None and getattr(result, "case_actions", ()):
+            from support_case_tools import persist_case_actions
+            if persist_case_actions(s, int(ticket_id), result.case_actions):
+                reply += "\n\nОбращение передано в очередь оператора."
         add_ticket_message(
             s,
             ticket_id=ticket.id,

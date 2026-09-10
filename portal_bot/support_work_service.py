@@ -107,7 +107,7 @@ def ticket_message_view(row: SupportTicketMessage) -> dict[str, Any]:
         "sender_tg_id": int(row.sender_tg_id),
         "visibility": str(getattr(row, "visibility", "public") or "public")[:16],
         "macro_code": _clean(getattr(row, "macro_code", None), 48),
-        "body": str(row.body or "")[:2000],
+        "body": str(row.body or "")[:12500 if row.sender_role == "assistant" else 2000],
         "has_attachment": bool(row.media_type or row.media_file_id),
         "media_type": _clean(row.media_type, 32),
         "created_at": _iso(row.created_at),
