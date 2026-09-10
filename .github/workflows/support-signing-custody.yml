@@ -11,6 +11,15 @@ on:
       - tests/test_support_signing_custody_workflow.py
       - requirements-ops.txt
   workflow_dispatch:
+    inputs:
+      recipient_key_id:
+        description: "Owned support worker recipient key ID; leave both recipient inputs empty for custody-only verification"
+        required: false
+        type: string
+      recipient_public_key_b64:
+        description: "Owned worker X25519 public key, unpadded base64url (never a private key)"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -65,17 +74,29 @@ jobs:
           POKROV_SUPPORT_MODE_SIGNING_PUBLIC_KEY_B64: ${{ vars.POKROV_SUPPORT_MODE_SIGNING_PUBLIC_KEY_B64 }}
           POKROV_SUPPORT_MODE_SIGNING_PRIVATE_KEY_B64: ${{ secrets.POKROV_SUPPORT_MODE_SIGNING_PRIVATE_KEY_B64 }}
           POKROV_SUPPORT_MODE_CODE_SECRET: ${{ secrets.POKROV_SUPPORT_MODE_CODE_SECRET }}
+          POKROV_SUPPORT_RECIPIENT_KEY_ID: ${{ inputs.recipient_key_id }}
+          POKROV_SUPPORT_RECIPIENT_PUBLIC_KEY_B64: ${{ inputs.recipient_public_key_b64 }}
         run: >-
           python scripts/verify_support_signing_custody.py
           --client-seed "${{ github.workspace }}/POKROV-app/config/support-signing.seed.json"
           --platform-revision "${{ steps.revisions.outputs.platform }}"
           --client-revision "${{ steps.revisions.outputs.client }}"
           --output "${{ runner.temp }}/support-signing-custody-receipt.json"
+          --signed-key-set-output "${{ runner.temp }}/support-signed-key-set.json"
 
       - name: Upload public custody receipt
         uses: actions/upload-artifact@v4
         with:
           name: support-signing-custody-${{ steps.revisions.outputs.platform }}
           path: ${{ runner.temp }}/support-signing-custody-receipt.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload signed public recipient key set
+        if: github.event_name == 'workflow_dispatch' && inputs.recipient_key_id != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: support-signed-key-set-${{ steps.revisions.outputs.platform }}
+          path: ${{ runner.temp }}/support-signed-key-set.json
           if-no-files-found: error
           retention-days: 30

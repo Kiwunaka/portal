@@ -8,12 +8,14 @@ import json
 import os
 import re
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 
 
 KEY_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,63}$")
@@ -175,6 +177,49 @@ def _write_receipt(path: Path, receipt: Mapping[str, Any]) -> None:
         raise CustodyVerificationError("public custody receipt could not be written") from exc
 
 
+def _sign_recipient_key_set(
+    *,
+    signing_key_id: str,
+    private_key_b64url: str,
+    recipient_key_id: str,
+    recipient_public_key_b64url: str,
+    now: datetime,
+) -> dict[str, Any]:
+    if KEY_ID_RE.fullmatch(recipient_key_id) is None:
+        raise CustodyVerificationError("recipient key id is invalid")
+    public_key = _decode_b64url(
+        recipient_public_key_b64url, exact_bytes=32, field="recipient public key"
+    )
+    try:
+        X25519PrivateKey.generate().exchange(X25519PublicKey.from_public_bytes(public_key))
+    except ValueError as exc:
+        raise CustodyVerificationError("recipient public key cannot establish a shared secret") from exc
+    expires = now + timedelta(days=30)
+    payload = {
+        "schema_version": 1,
+        "type": "pokrov.support.key_set",
+        "issued_at": now.isoformat(),
+        "expires_at": expires.isoformat(),
+        "keys": [{
+            "algorithm": "X25519-HKDF-SHA256-AES-256-GCM",
+            "key_id": recipient_key_id,
+            "not_after": expires.isoformat(),
+            "public_key_b64": recipient_public_key_b64url,
+        }],
+    }
+    raw = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    private_key = Ed25519PrivateKey.from_private_bytes(
+        _decode_b64url(private_key_b64url, exact_bytes=32, field="hosted private key")
+    )
+    return {
+        "schema_version": 1,
+        "algorithm": "Ed25519",
+        "key_id": signing_key_id,
+        "payload_b64": _b64url(raw),
+        "signature_b64": _b64url(private_key.sign(raw)),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Verify hosted support-mode signing custody against the tracked client public pin."
@@ -183,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--platform-revision", required=True)
     parser.add_argument("--client-revision", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--signed-key-set-output", type=Path)
     args = parser.parse_args(argv)
     try:
         receipt = verify_custody(
@@ -194,6 +240,19 @@ def main(argv: list[str] | None = None) -> int:
             public_key_b64url=os.getenv("POKROV_SUPPORT_MODE_SIGNING_PUBLIC_KEY_B64", ""),
             code_secret=os.getenv("POKROV_SUPPORT_MODE_CODE_SECRET", ""),
         )
+        recipient_key_id = os.getenv("POKROV_SUPPORT_RECIPIENT_KEY_ID", "")
+        recipient_public_key = os.getenv("POKROV_SUPPORT_RECIPIENT_PUBLIC_KEY_B64", "")
+        if recipient_key_id or recipient_public_key:
+            if args.signed_key_set_output is None:
+                raise CustodyVerificationError("signed public key-set output is required")
+            envelope = _sign_recipient_key_set(
+                signing_key_id=str(receipt["key_id"]),
+                private_key_b64url=os.getenv("POKROV_SUPPORT_MODE_SIGNING_PRIVATE_KEY_B64", "").strip(),
+                recipient_key_id=recipient_key_id,
+                recipient_public_key_b64url=recipient_public_key,
+                now=datetime.now(timezone.utc),
+            )
+            _write_receipt(args.signed_key_set_output, envelope)
         _write_receipt(args.output, receipt)
     except CustodyVerificationError as exc:
         print(f"Support signing custody verification failed: {exc}", file=sys.stderr)
