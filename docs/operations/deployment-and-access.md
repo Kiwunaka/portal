@@ -251,6 +251,29 @@ and queue opaque ciphertext but must not have the recipient private-key file.
 Only `portal-worker` receives that mounted file, and the worker is enabled only
 after backup, retention, permission and rollback checks are retained.
 
+For separate API/worker operating-system identities, provision accepted
+ciphertext storage as a worker-owned setgid directory (`2750`) with an exclusive
+API service group. New accepted objects use `0640` and inherit that group;
+the API can read ciphertext but cannot modify or delete accepted objects.
+Quarantine separately permits API writes and worker processing. Keep recipient
+private keys outside both trees, worker-only `0700` directory / `0600` file.
+Verify direct and `/proc/<worker>/root` denial from the actual API identity;
+root API and root worker without isolation do not satisfy this boundary.
+
+`infra/portal-api-support-isolation.conf` is the API drop-in for that boundary.
+Provision the system user/group `pokrov-api`, an empty readable
+`/etc/pokrov/api-empty.env`, and root-only `/etc/pokrov/support-api.env` before
+installation. The latter owns the upload-ticket secret, signed public key set
+and private quarantine/accepted paths; it contains no recipient private key.
+systemd reads the existing root-only dotenv and support-case environment before
+dropping privilege. The application sees an empty dotenv mount, the same
+read-only source/shared/copy paths, and only its two existing upload directories
+as writable mounts under `/root`. Preserve existing upload bytes while assigning
+those API-owned directories/files to the API identity. The support worker keeps
+its separate recipient environment and key file. Rehearse configuration equality,
+import/lifecycle, storage access and key denial before changing the live API;
+retain the previous unit configuration and ownership metadata for rollback.
+
 ```dotenv
 POKROV_SUPPORT_UPLOAD_TICKET_SECRET=
 POKROV_SUPPORT_SIGNED_KEY_SET_JSON=
