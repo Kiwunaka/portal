@@ -723,7 +723,9 @@ def _persist_encrypted_object(
     if hasattr(os, "O_BINARY"):
         flags |= os.O_BINARY
     try:
-        descriptor = os.open(target, flags, 0o600)
+        # The accepted directory's service group may read ciphertext for the
+        # audited API download; recipient private keys use separate storage.
+        descriptor = os.open(target, flags, 0o640)
     except FileExistsError:
         raise SupportBundleIngestError("object_storage_conflict") from None
     try:
