@@ -5,11 +5,13 @@ import hashlib
 import importlib.util
 import json
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -121,10 +123,12 @@ def test_seed_rejects_unknown_fields_and_noncanonical_public_encoding(tmp_path: 
         _verify(fixture)
 
 
+@pytest.mark.parametrize("publish_recipient", [False, True])
 def test_cli_writes_public_receipt_without_echoing_secrets(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    publish_recipient: bool,
 ) -> None:
     fixture = _fixture(tmp_path)
     seed = fixture["seed"]
@@ -140,6 +144,11 @@ def test_cli_writes_public_receipt_without_echoing_secrets(
     )
     monkeypatch.setenv("POKROV_SUPPORT_MODE_CODE_SECRET", str(fixture["code_secret"]))
     output = tmp_path / "receipt.json"
+    key_set_output = tmp_path / "signed-key-set.json"
+    recipient = X25519PrivateKey.generate()
+    recipient_public = _b64url(recipient.public_key().public_bytes_raw())
+    monkeypatch.setenv("POKROV_SUPPORT_RECIPIENT_KEY_ID", "worker-test" if publish_recipient else "")
+    monkeypatch.setenv("POKROV_SUPPORT_RECIPIENT_PUBLIC_KEY_B64", recipient_public if publish_recipient else "")
 
     exit_code = MODULE.main(
         [
@@ -151,6 +160,8 @@ def test_cli_writes_public_receipt_without_echoing_secrets(
             "b" * 40,
             "--output",
             str(output),
+            "--signed-key-set-output",
+            str(key_set_output),
         ]
     )
 
@@ -158,7 +169,40 @@ def test_cli_writes_public_receipt_without_echoing_secrets(
     receipt_text = output.read_text(encoding="utf-8")
     assert exit_code == 0
     assert "Support signing custody verified" in captured.out
+    assert key_set_output.exists() is publish_recipient
+    if publish_recipient:
+        envelope = json.loads(key_set_output.read_text(encoding="utf-8"))
+        raw = base64.urlsafe_b64decode(envelope["payload_b64"] + "=" * (-len(envelope["payload_b64"]) % 4))
+        signature = base64.urlsafe_b64decode(envelope["signature_b64"] + "=" * (-len(envelope["signature_b64"]) % 4))
+        Ed25519PrivateKey.from_private_bytes(bytes(range(32))).public_key().verify(signature, raw)
+        payload = json.loads(raw)
+        assert envelope["key_id"] == seed["key_id"]
+        assert set(payload) == {"schema_version", "type", "issued_at", "expires_at", "keys"}
+        assert payload["type"] == "pokrov.support.key_set"
+        assert datetime.fromisoformat(payload["expires_at"]) - datetime.fromisoformat(payload["issued_at"]) == timedelta(days=30)
+        assert payload["keys"] == [{
+            "algorithm": "X25519-HKDF-SHA256-AES-256-GCM",
+            "key_id": "worker-test", "not_after": payload["expires_at"],
+            "public_key_b64": recipient_public,
+        }]
+        receipt_text += key_set_output.read_text(encoding="utf-8")
     for secret in (str(fixture["private_b64url"]), str(fixture["code_secret"])):
         assert secret not in captured.out
         assert secret not in captured.err
         assert secret not in receipt_text
+
+
+@pytest.mark.parametrize("key_id,public_key", [
+    ("", _b64url(b"p" * 32)),
+    ("worker-test", ""),
+    ("worker-test", _b64url(bytes(32))),
+])
+def test_recipient_signing_rejects_incomplete_or_unusable_key(key_id: str, public_key: str) -> None:
+    with pytest.raises(MODULE.CustodyVerificationError):
+        MODULE._sign_recipient_key_set(
+            signing_key_id="pokrov-support-test",
+            private_key_b64url=_b64url(bytes(range(32))),
+            recipient_key_id=key_id,
+            recipient_public_key_b64url=public_key,
+            now=datetime(2026, 9, 10, tzinfo=timezone.utc),
+        )

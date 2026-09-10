@@ -36,10 +36,19 @@ def test_custody_workflow_exposes_secrets_only_to_trusted_validation_step() -> N
     assert text.count("persist-credentials: false") == 2
 
 
-def test_custody_workflow_uploads_only_the_public_receipt() -> None:
+def test_custody_workflow_uploads_only_public_receipt_and_optional_public_key_set() -> None:
     text = WORKFLOW.read_text(encoding="utf-8-sig")
     upload = _step(text, "Upload public custody receipt")
 
     assert "support-signing-custody-receipt.json" in upload
     assert "if-no-files-found: error" in upload
     assert "include-hidden-files" not in upload
+    key_set = _step(text, "Upload signed public recipient key set")
+    assert "github.event_name == 'workflow_dispatch' && inputs.recipient_key_id != ''" in key_set
+    assert "path: ${{ runner.temp }}/support-signed-key-set.json" in key_set
+    assert "if-no-files-found: error" in key_set
+    validation = _step(text, "Verify hosted custody against client pin")
+    env, run = validation.split("        run:", 1)
+    assert "${{ inputs.recipient_key_id }}" in env
+    assert "${{ inputs.recipient_public_key_b64 }}" in env
+    assert "${{ inputs." not in run

@@ -287,6 +287,25 @@ retained artifact is a public revision/digest receipt. This source-control
 custody check does not copy secrets to production, enable issuance, build a
 candidate, or replace runtime/device/rollback evidence.
 
+The same master-only workflow can sign one owned worker's X25519 public
+recipient without exporting the hosted signing private key. Supply both
+`recipient_key_id` and `recipient_public_key_b64` to the manual dispatch; the
+latter must be the worker-generated public key in unpadded base64url. The
+verified client pin remains the signing authority. A second artifact contains
+only the signed `pokrov.support.key_set` envelope, valid for 30 days. Its
+recipient expiry equals the key-set expiry; incomplete or unusable public keys
+fail before publication. With both inputs empty, the workflow remains a
+custody-only check. Dispatch inputs enter the validator as environment data,
+never shell source.
+
+Verify the artifact signature against the exact client pin and its recipient
+against the worker before configuring `POKROV_SUPPORT_SIGNED_KEY_SET_JSON`.
+Renew the signed public envelope before its expiry, retaining the recipient
+private key while any accepted ciphertext still needs decryption. Rotation
+must preserve old recipient keys for that retention window. Signing the public
+artifact does not install a private key, enable support mode or the ingest
+worker, authorize access, or satisfy the runtime isolation and rollback gates.
+
 The payment-entitlement outbox worker is always supervised with the portal
 worker; these values bound claim/retry work and do not enable a payment
 provider:
