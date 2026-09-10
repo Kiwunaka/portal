@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import json
 
+import pytest
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PORTAL_BOT_DIR = REPO_ROOT / "portal_bot"
@@ -113,6 +115,7 @@ def test_decision_vocabulary_is_closed_and_draft_is_automatic_stop() -> None:
     )
     assert pack["recommendation"] == "stop"
     assert pack["automatic_stop_reasons"] == ["pilot_not_owner_approved"]
+    assert pack["winner"] is None
     assert pack["scale_automatic"] is False
 
 
@@ -160,6 +163,30 @@ def test_matured_server_metric_can_only_request_owner_scale_review() -> None:
     assert postmortem["scale_requires_owner_approval"] is True
 
 
+@pytest.mark.parametrize(
+    ("scenario", "recommendation"),
+    [("missing_variant", "continue_collecting"), ("tie", "keep"), ("window_open", "continue_collecting")],
+)
+def test_winner_requires_a_complete_unambiguous_comparison(scenario: str, recommendation: str) -> None:
+    attribution = _attribution()
+    if scenario == "missing_variant":
+        attribution["variant_cohorts"].pop()
+    elif scenario == "tie":
+        attribution["variant_cohorts"][1]["net_revenue_30d_rub"] = 5400
+        attribution["variant_cohorts"][1]["net_revenue_30d_per_capacity_unit"] = 540.0
+    pack = build_winback_decision_pack(
+        campaign=_campaign(ended_days_ago=3 if scenario == "window_open" else 31),
+        attribution=attribution,
+        guardrails=_guardrails(),
+        now=NOW,
+        pilot_contract=_pilot(approved=True),
+        holdout_evidence={"state": "ready", "subjects": 20},
+    )
+    assert pack["winner"] is None
+    assert pack["recommendation"] == recommendation
+    assert build_winback_postmortem(pack)["winner"] is None
+
+
 def test_incident_and_p0_p1_support_force_stop_and_postmortem_refuses_winner() -> None:
     pack = build_winback_decision_pack(
         campaign=_campaign(),
@@ -173,6 +200,7 @@ def test_incident_and_p0_p1_support_force_stop_and_postmortem_refuses_winner() -
         holdout_evidence={"state": "ready", "subjects": 20},
     )
     assert pack["recommendation"] == "stop"
+    assert pack["winner"] is None
     assert pack["automatic_stop_reasons"] == [
         "incident_guard_failed",
         "p0_p1_support_guard_failed",
