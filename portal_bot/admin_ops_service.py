@@ -44,6 +44,7 @@ from ru_probe_service import (
     get_ru_uploader_status,
 )
 from transport_catalog import node_transport_profiles
+from support_bundle_health import support_bundle_health_alerts
 
 
 MANAGED_ALERT_SOURCES = {
@@ -53,6 +54,7 @@ MANAGED_ALERT_SOURCES = {
     "free_tier",
     "security",
     "ru_probe",
+    "support_bundle",
 }
 
 
@@ -1506,6 +1508,7 @@ def refresh_ops_alerts_for_current_state(
         ru_status=ru_status,
         ru_uploader_status=ru_uploader_status,
     )
+    candidates.extend(support_bundle_health_alerts(now=now))
     rows, notifications = refresh_ops_alerts(s=s, now=now, candidates=candidates)
     return [alert_payload(row, now=now) for row in rows], notifications, metrics_status, capacity_payload
 

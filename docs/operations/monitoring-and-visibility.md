@@ -825,6 +825,12 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
 - `/api/admin/alerts`, `/api/admin/alerts/{id}/ack`, and `/api/admin/alerts/{id}/silence` own durable alert center behavior; alert rows store severity, source, status, first/last seen, resolved state, ack, silence window, and Telegram delivery status
 - durable alert sources in v1 include the retired-free-pool invariant, provider cap, node metrics freshness, node capacity, and selected security/admin error counters
 - `portal_bot/worker.py` runs `admin_ops_alert_refresh` on a short interval so durable alerts and Telegram admin notifications do not depend on an operator opening `adminapp/`
+- Configured support-bundle storage adds `support_bundle` alerts to that same
+  lifecycle. A worker-owned, group-readable `support-worker-health.json` contains
+  only ingest/retention timestamps and integer error counts. Missing or invalid
+  state, ingest older than ten minutes, retention older than twice its interval,
+  and non-zero errors stay visible until a healthy observation resolves them.
+  These operational signals contain no archive content, filenames or case IDs.
 - the overview reads its active-alert queue from the same durable snapshot and does not issue a second `/api/admin/alerts` request; the dedicated alerts route keeps its own read/ack/silence workflow
 - Telegram admin notifications for new and resolved warning/critical alerts must include only short titles and fingerprints; do not include raw config payloads, API tokens, provider secrets, panel passwords, or full metadata JSON
 

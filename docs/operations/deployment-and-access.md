@@ -274,6 +274,22 @@ its separate recipient environment and key file. Rehearse configuration equality
 import/lifecycle, storage access and key denial before changing the live API;
 retain the previous unit configuration and ownership metadata for rollback.
 
+Once recipient private material exists, code/configuration rollback must retain
+the API identity isolation. Do not restore a root API alongside a reachable
+recipient key. Disabling ingest does not remove that custody requirement.
+
+The parent of the configured accepted directory is worker-owned with the
+exclusive API group and mode `2750`. The worker atomically replaces its bounded
+`support-worker-health.json` there with mode `0640`; the API reads it but cannot
+write it. Ingest and retention publish only observation timestamps and integer
+error counts. The existing operator alert refresh reports missing/invalid
+signals, ingest older than ten minutes, retention older than twice its configured
+interval, and non-zero errors. Healthy observations resolve the same durable
+alerts. The first minute after the worker records its startup permits missing
+initial observations; it does not constitute a successful ingest/retention run.
+Before enabling uploads, verify a fault and recovery through this alert
+path as well as the retention and custody checks below.
+
 ```dotenv
 POKROV_SUPPORT_UPLOAD_TICKET_SECRET=
 POKROV_SUPPORT_SIGNED_KEY_SET_JSON=
