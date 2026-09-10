@@ -1,0 +1,12 @@
+{
+  "source_commit": "6ab960ffa489a0a6661bd6b066cd1870f855bd6a",
+  "signed_commit": "381f6103586e781451d86babf1a0415f3e07ae93",
+  "tree": "feed6328d09e7663e0c5e257e72ff5be19db0340",
+  "verified": true,
+  "tree_equal": true,
+  "branch": "codex/support-deepseek41-high-signed-20260910",
+  "merge_commit": "d9d0ac05dfe9e79dcdb2a9dcc3c718b9a773b88c",
+  "merge_verified": true,
+  "master_payload_matches_runtime": true,
+  "pr": 271
+}
