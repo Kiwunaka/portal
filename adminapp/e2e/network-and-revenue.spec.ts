@@ -196,6 +196,14 @@ test("Деньги: платежи разделяют order status и callback, 
 
   await expect(page.getByRole("heading", { name: "Платежи", level: 1 })).toBeVisible();
   await expect(page.getByText("Зависшие", { exact: true })).toBeVisible();
+  const metrics = page.getByLabel("Показатели платежей");
+  const browserCohort = metrics.locator(".ops-metric-cell").filter({ hasText: "Сессии сайта без оплаты" });
+  const productCohort = metrics.locator(".ops-metric-cell").filter({ hasText: "Пользователи без оплаты" });
+  await expect(browserCohort.getByText("8", { exact: true })).toBeVisible();
+  await expect(browserCohort).toContainText("Начали оплату: 12");
+  await expect(productCohort.getByText("4", { exact: true })).toBeVisible();
+  await expect(productCohort).toContainText("Начали оплату: 8");
+  await expect(metrics.getByText("Checkout без оплаты", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("columnheader", { name: "Состояние callback", exact: true }).first()).toBeVisible();
   await page.getByLabel("Период платежей").selectOption("7d");
   await expect(page).toHaveURL(/period=7d/);

@@ -282,7 +282,9 @@ def _admin_product_observability_payload(*, s, from_dt: datetime, to_dt: datetim
     }
 
 
-def _admin_funnel_summary_payload(*, s, from_dt: datetime, to_dt: datetime) -> dict[str, Any]:
+def _admin_funnel_summary_payload(
+    *, s, from_dt: datetime, to_dt: datetime, include_observability: bool = True,
+) -> dict[str, Any]:
     cohort = (
         s.query(AcquisitionSession)
         .filter(AcquisitionSession.first_touch_at >= from_dt, AcquisitionSession.first_touch_at <= to_dt)
@@ -526,10 +528,9 @@ def _admin_funnel_summary_payload(*, s, from_dt: datetime, to_dt: datetime) -> d
                 {"reason": "Начали оплату, но не оплатили", "count": product_stages[1]["dropped"]},
                 {"reason": "Оплатили, но подключение не подтверждено", "count": product_stages[2]["dropped"]},
             ],
-            "observability": _admin_product_observability_payload(
-                s=s,
-                from_dt=from_dt,
-                to_dt=to_dt,
+            "observability": (
+                _admin_product_observability_payload(s=s, from_dt=from_dt, to_dt=to_dt)
+                if include_observability else None
             ),
         },
         "notes": [

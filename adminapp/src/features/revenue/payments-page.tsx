@@ -175,7 +175,10 @@ export function PaymentsPage({ onShellStatus }: { onShellStatus?: (status: OpsSh
             <MetricCell icon={<Banknote aria-hidden="true" size={17} />} label="Выручка" value={finite(revenue?.amount) === null ? <MissingData /> : numberText(revenue?.amount, revenue?.currency ? ` ${revenue.currency}` : "")} detail="Подтверждённые оплаты" tone="success" />
             <MetricCell icon={<CircleCheck aria-hidden="true" size={17} />} label="Оплачено" value={finite(revenue?.paid_count) === null ? <MissingData /> : numberText(revenue?.paid_count)} detail="За выбранный период" tone="success" />
             <MetricCell icon={<Clock3 aria-hidden="true" size={17} />} label="Зависшие" value={finite(attention?.problem_count) === null ? <MissingData /> : numberText(attention?.problem_count)} detail="Требуют ручной проверки" tone={Number(attention?.problem_count || 0) > 0 ? "warning" : "success"} />
-            <MetricCell icon={<ShoppingCart aria-hidden="true" size={17} />} label="Checkout без оплаты" value={finite(summary.data?.abandoned.checkout_not_paid) === null ? <MissingData /> : numberText(summary.data?.abandoned.checkout_not_paid)} detail="Диагностическая потеря" tone={Number(summary.data?.abandoned.checkout_not_paid || 0) > 0 ? "warning" : "neutral"} />
+            {(["acquisition", "product"] as const).map((key) => {
+              const cohort = summary.data?.abandoned.cohorts[key];
+              return <MetricCell key={key} icon={<ShoppingCart aria-hidden="true" size={17} />} label={key === "acquisition" ? "Сессии сайта без оплаты" : "Пользователи без оплаты"} value={finite(cohort?.checkout_not_paid) === null ? <MissingData /> : numberText(cohort?.checkout_not_paid)} detail={cohort ? `Начали оплату: ${numberText(cohort.checkout_started)}` : "Группа ещё не получена"} tone={Number(cohort?.checkout_not_paid || 0) > 0 ? "warning" : "neutral"} />;
+            })}
           </MetricStrip>
         </RouteBoundary>
       </section>

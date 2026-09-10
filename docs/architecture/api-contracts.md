@@ -391,6 +391,15 @@ the first qualifying payment. Client payment/connection events and
 first-connection self-reports remain diagnostic observations. The projection
 does not infer a browser-to-account link when the acquisition handoff is absent.
 
+The payments summary (`/api/admin/payments/summary` and its money-v2 projection)
+reuses those same checkout/paid cohorts under `abandoned.cohorts.acquisition`
+and `abandoned.cohorts.product`. Each names its cohort and unit, and returns
+`checkout_started`, `paid`, and `checkout_not_paid` within that cohort. Browser
+sessions and known users are never added together or reduced by an unrelated
+count of orders. The old combined numeric fields remain null for the deployed
+client transition; missing cohort data renders unknown, not zero. Payment
+summary does not compute the funnel's unrelated diagnostic aggregates.
+
 `GET /api/client/locations` keeps its existing country/city shape and adds a
 deterministic `variants` list to every returned city. The first item is always
 `{"id":"direct","label":"Обычный","description":"Прямое подключение"}`.

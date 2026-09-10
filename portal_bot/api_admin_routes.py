@@ -425,59 +425,6 @@ def _admin_payment_period_bounds(period: str) -> tuple[str, datetime, datetime]:
     return label, start, now
 
 
-def _count_funnel_sessions(
-    s,
-    *,
-    from_dt: datetime,
-    to_dt: datetime,
-    stages: set[str] | None = None,
-    event_names: set[str] | None = None,
-) -> int:
-    query = (
-        s.query(func.count(func.distinct(FunnelEvent.session_id)))
-        .filter(FunnelEvent.created_at >= from_dt, FunnelEvent.created_at <= to_dt)
-    )
-    if stages:
-        query = query.filter(FunnelEvent.stage.in_(sorted(stages)))
-    if event_names:
-        query = query.filter(FunnelEvent.event_name.in_(sorted(event_names)))
-    return int(query.scalar() or 0)
-
-
-def _count_known_event_users(
-    s,
-    *,
-    from_dt: datetime,
-    to_dt: datetime,
-    event_names: set[str],
-) -> int:
-    return int(
-        s.query(func.count(func.distinct(Event.tg_id)))
-        .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
-        .filter(Event.event_name.in_(sorted(event_names)))
-        .scalar()
-        or 0
-    )
-
-
-def _count_pay_attempt_users(
-    s,
-    *,
-    from_dt: datetime,
-    to_dt: datetime,
-    statuses: set[str] | None = None,
-) -> int:
-    query = (
-        s.query(func.count(func.distinct(PayAttempt.tg_id)))
-        .filter(PayAttempt.started_at >= from_dt, PayAttempt.started_at <= to_dt)
-    )
-    if statuses:
-        query = query.filter(
-            func.lower(func.coalesce(PayAttempt.status, "")).in_(sorted(statuses))
-        )
-    return int(query.scalar() or 0)
-
-
 def _admin_payments_summary_payload(*, s, period: str) -> dict[str, Any]:
     label, from_dt, to_dt = _admin_payment_period_bounds(period)
     paid_time = func.coalesce(ExternalOrder.paid_at, ExternalOrder.created_at)
@@ -529,17 +476,19 @@ def _admin_payments_summary_payload(*, s, period: str) -> dict[str, Any]:
         + reversal_problem_count
     )
 
-    site_checkout_intent = _count_funnel_sessions(
-        s,
-        from_dt=from_dt,
-        to_dt=to_dt,
-        stages={"checkout_view", "checkout_start"},
+    funnel = _admin_funnel_summary_payload(
+        s=s, from_dt=from_dt, to_dt=to_dt, include_observability=False,
     )
-    known_buy_clicks = _count_known_event_users(s, from_dt=from_dt, to_dt=to_dt, event_names={"clicked_pay"})
-    known_checkout_events = _count_known_event_users(s, from_dt=from_dt, to_dt=to_dt, event_names={"pay_started"})
-    pay_attempts_started = _count_pay_attempt_users(s, from_dt=from_dt, to_dt=to_dt)
-    buy_clicks = site_checkout_intent + known_buy_clicks
-    checkout_started = site_checkout_intent + max(known_checkout_events, pay_attempts_started)
+    checkout_cohorts = {}
+    for key, unit in (("acquisition", "browser_session"), ("product", "known_user")):
+        totals = funnel[key]["totals"]
+        checkout_cohorts[key] = {
+            "cohort": funnel[key]["cohort"],
+            "unit": unit,
+            "checkout_started": totals["checkouts"],
+            "paid": totals["paid"],
+            "checkout_not_paid": totals["checkouts"] - totals["paid"],
+        }
     paid_count = int(primary_revenue.get("paid_count") or 0)
 
     ordinary_problem_rows = (
@@ -590,12 +539,14 @@ def _admin_payments_summary_payload(*, s, period: str) -> dict[str, Any]:
             "problem_count": int(pending_count + manual_review_count + failed_count),
         },
         "abandoned": {
-            "buy_clicks": int(buy_clicks),
-            "checkout_started": int(checkout_started),
-            "paid": int(paid_count),
-            "buy_click_not_paid": max(0, int(buy_clicks) - int(paid_count)),
-            "checkout_not_paid": max(0, int(checkout_started) - int(paid_count)),
-            "note": "Диагностический funnel-счетчик; бухгалтерская правда остается в signed payment callbacks и external_orders.",
+            # Published clients accept null while the cohort-aware UI rolls out.
+            "buy_clicks": None,
+            "checkout_started": None,
+            "paid": None,
+            "buy_click_not_paid": None,
+            "checkout_not_paid": None,
+            "cohorts": checkout_cohorts,
+            "note": "Сессии сайта и пользователи продукта считаются отдельно; оплата подтверждается сервером.",
         },
         "commercial_attribution": commercial_attribution_read_model(
             s,

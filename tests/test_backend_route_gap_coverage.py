@@ -372,6 +372,16 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
         self.assertNotIn("account-funnel-1001", serialized)
         self.assertNotIn("order-funnel-1", serialized)
 
+        with patch.object(self.api, "_admin_product_observability_payload", side_effect=AssertionError("Payments must not scan unrelated diagnostic aggregates")):
+            payments = self.client.get("/api/admin/payments/summary", headers=self.admin_headers)
+        self.assertEqual(payments.status_code, 200, payments.text)
+        abandoned = payments.json()["abandoned"]
+        self.assertIsNone(abandoned["checkout_not_paid"])
+        for cohort in ("acquisition", "product"):
+            self.assertEqual(abandoned["cohorts"][cohort]["checkout_started"], 1)
+            self.assertEqual(abandoned["cohorts"][cohort]["paid"], 1)
+            self.assertEqual(abandoned["cohorts"][cohort]["checkout_not_paid"], 0)
+
         # Only an observer connection after the server-owned payment is a
         # paid-to-connected outcome; self-report and an earlier trial are not.
         for evidence_id, observed_at, kind, expected in (
@@ -416,6 +426,15 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
         })
         self.assertEqual(body["acquisition"]["totals"]["sessions"], 0)
 
+        payments = self.client.get("/api/admin/payments/summary", headers=self.admin_headers)
+        self.assertEqual(payments.status_code, 200, payments.text)
+        abandoned = payments.json()["abandoned"]
+        self.assertIsNone(abandoned["checkout_not_paid"])
+        self.assertEqual(abandoned["cohorts"]["acquisition"]["checkout_started"], 0)
+        self.assertEqual(abandoned["cohorts"]["product"]["checkout_started"], 1)
+        self.assertEqual(abandoned["cohorts"]["product"]["paid"], 0)
+        self.assertEqual(abandoned["cohorts"]["product"]["checkout_not_paid"], 1)
+
         # A later server payment and observer fact belong to the product
         # cohort without fabricating an anonymous browser handoff.
         from db import SessionLocal
@@ -444,6 +463,12 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
             "opened": 1, "checkouts": 1, "paid": 1, "connected": 1,
         })
         self.assertEqual(response.json()["acquisition"]["totals"]["sessions"], 0)
+
+        payments = self.client.get("/api/admin/payments/summary", headers=self.admin_headers)
+        self.assertEqual(payments.status_code, 200, payments.text)
+        self.assertEqual(payments.json()["abandoned"]["cohorts"]["product"]["paid"], 1)
+        self.assertEqual(payments.json()["abandoned"]["cohorts"]["product"]["checkout_not_paid"], 0)
+        self.assertEqual(payments.json()["abandoned"]["cohorts"]["acquisition"]["paid"], 0)
 
     def test_admin_broadcast_and_referral_gap_routes(self) -> None:
         sent_to: list[int] = []
