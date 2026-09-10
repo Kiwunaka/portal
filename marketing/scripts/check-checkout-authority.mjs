@@ -39,9 +39,9 @@ export async function checkCheckoutAuthority(browser, baseUrl, failures) {
       return {
         ok: true, valid: true, reason_code: "ready", blocking_reasons: [],
         plan_code: input.plan_code, currency: "RUB", commercial_revision: contract.commercial_revision,
-        base_price_rub: plan.amount_rub, final_price_rub: plan.amount_rub,
+        base_price_rub: plan.amount_rub, final_price_rub: scenario === "expiry" ? Math.round(plan.amount_rub * 0.9) : plan.amount_rub,
         server_time: new Date(now).toISOString(),
-        hold_expires_at: new Date(now + (scenario === "expiry" ? 1800 : 60_000)).toISOString(),
+        hold_expires_at: new Date(now + (scenario === "expiry" ? 3000 : 60_000)).toISOString(),
         offer_ends_at: new Date(now + 120_000).toISOString(),
         offer_token: scenario === "quote-changed" ? `synthetic-quote-${++quoteSequence}` : "synthetic-quote", terms_url: "/offer/", ...overrides,
       };
@@ -97,7 +97,8 @@ export async function checkCheckoutAuthority(browser, baseUrl, failures) {
     });
 
     try {
-      const query = scenario === "optional-acquisition" ? "?checkout_ticket=synthetic&plan=1_month" : "";
+      const query = scenario === "optional-acquisition" ? "?checkout_ticket=synthetic&plan=1_month"
+        : scenario === "expiry" ? "?plan=3_months&promo=EXPIRY" : "";
       await page.goto(`${baseUrl}/checkout/${query}`, { waitUntil: "domcontentloaded", timeout: 30_000 });
       assert.match(await page.title(), /POKROV/i);
       if (scenario !== "read-timeout") await payButton(page).waitFor({ timeout: scenario === "optional-acquisition" ? 1500 : 15_000 });
@@ -107,9 +108,18 @@ export async function checkCheckoutAuthority(browser, baseUrl, failures) {
         assert.equal(await page.getByRole("button", { name: "Оплатить 1 ₽", exact: true }).count(), 0);
         assert.equal(orders.length, 0);
       } else if (scenario === "expiry") {
+        await page.getByText("Есть промокод?", { exact: true }).click();
         await until(() => payButton(page).isEnabled(), "Fresh quote never enabled payment");
+        await page.getByText("Промокод применён сервером.", { exact: true }).waitFor();
+        await page.evaluate(() => {
+          const originalNow = Date.now;
+          Date.now = () => originalNow() - 86_400_000;
+        });
         await until(async () => !(await payButton(page).isEnabled()), "Expired quote remained payable");
         await page.getByText("Срок подтверждённой суммы истёк. Проверьте условия ещё раз.", { exact: true }).waitFor();
+        assert.equal(await page.getByText("Промокод применён сервером.", { exact: true }).count(), 0, "Expired quote still claims promo applied");
+        assert.equal(await page.getByText(/^было .* ₽$/).count(), 0, "Expired quote still advertises a discount");
+        assert.equal(orders.length, 0);
       } else if (scenario === "input-race") {
         await page.locator("#checkout-buyer-email").fill("synthetic@example.test");
         await until(() => payButton(page).isEnabled(), "Fresh quote never enabled payment");

@@ -39,6 +39,8 @@ promo. Plan, promo, checkout subject, provider, payment method or buyer changes
 immediately invalidate its previous quote; debounce delays only the new request.
 Late responses cannot restore an earlier input's quote. Expiry uses the server's
 remaining hold with monotonic local elapsed time, and submit checks it again.
+Once that hold expires, the checkout removes both the discounted amount and
+the promo-applied confirmation; a workstation clock rollback cannot retain them.
 Catalog/provider read results become visible independently of optional acquisition
 completion. Read-only checkout fetches share one eight-second deadline across all API bases,
 including response-body reads; replacing preview or debounced key inputs aborts
