@@ -1,0 +1,30 @@
+{
+  "candidate": "0d66797d57bbdd0a90b143425fbddb75f9c4def1",
+  "origin": "brain-origin",
+  "services": {
+    "portal-api": {
+      "MainPID": "222340",
+      "NRestarts": "0",
+      "ActiveState": "active",
+      "support": {
+        "SUPPORT_AI_MODEL": "deepseek/deepseek-v4.1-flash",
+        "SUPPORT_AI_REASONING_EFFORT": "high",
+        "SUPPORT_AI_ENABLED": "true",
+        "SUPPORT_AI_AGENT_ENABLED": "true"
+      }
+    },
+    "portal-helpbot": {
+      "MainPID": "222343",
+      "NRestarts": "0",
+      "ActiveState": "active",
+      "support": {
+        "SUPPORT_AI_MODEL": "deepseek/deepseek-v4.1-flash",
+        "SUPPORT_AI_REASONING_EFFORT": "high",
+        "SUPPORT_AI_ENABLED": "true",
+        "SUPPORT_AI_AGENT_ENABLED": "true"
+      }
+    }
+  },
+  "files_match": true,
+  "status": "PASS"
+}

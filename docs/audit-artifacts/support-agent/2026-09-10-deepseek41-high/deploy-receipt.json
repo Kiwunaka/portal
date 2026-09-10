@@ -1,0 +1,42 @@
+{
+  "candidate": "0d66797d57bbdd0a90b143425fbddb75f9c4def1",
+  "status": "PASS",
+  "units_before": {
+    "portal-api": {
+      "MainPID": "205212",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "83909",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    }
+  },
+  "changed_files": [
+    "portal_bot/helpbot.py",
+    "portal_bot/support_ai_service.py",
+    "portal_bot/support_agent_service.py",
+    "portal_bot/support_agent_provider.py",
+    "portal_bot/support_agent_harness.py",
+    "portal_bot/support_agent_policy.py",
+    "portal_bot/support_case_context.py",
+    "shared/support-agent-policy.json"
+  ],
+  "common_environment_changed": false,
+  "database_mutated": false,
+  "units_after": {
+    "portal-api": {
+      "MainPID": "222340",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "222343",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    }
+  },
+  "backup": "/root/portal_bot.deploy-backups/manual-support-ds41-0d66797d57bb",
+  "health": "PASS"
+}
