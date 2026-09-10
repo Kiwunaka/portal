@@ -216,12 +216,21 @@ def _build_stage_runtime_import_command(stage_root: str) -> str:
         "import operator_observability_service; "
         "assert operator_observability_service._KNOWN_ERROR_CODES"
     )
+    pi_check = (
+        "import hashlib,pathlib; "
+        "p=pathlib.Path('support_pi/package-lock.json'); "
+        "assert not p.exists() or hashlib.sha256(p.read_bytes().replace(b'\\r\\n',b'\\n')).hexdigest() == "
+        "pathlib.Path('/root/portal_bot/support_pi/installed-lock.sha256').read_text().strip(), "
+        "'support pi dependencies must be prepared for this lock before deployment'"
+    )
     return "\n".join(
         [
             "set -e",
             f"test -x {_q(python)}",
             f"cd {_q(portal_stage)}",
             f"PYTHONPATH={_q(portal_stage)} {_q(python)} -c {_q(import_check)}",
+            f"{_q(python)} -c {_q(pi_check)}",
+            "if [ -f support_pi/runner.mjs ]; then /opt/pokrov-support-node/bin/node --check support_pi/runner.mjs; fi",
         ]
     )
 
@@ -354,6 +363,8 @@ def iter_upload_mappings(repo_root: Path) -> list[tuple[Path, str]]:
             mappings.append((path, f"{REMOTE_PORTAL_ROOT}/{relative.as_posix()}"))
         elif relative.as_posix() == "requirements.txt":
             mappings.append((path, f"{REMOTE_PORTAL_ROOT}/requirements.txt"))
+        elif relative.as_posix() in {"support_pi/runner.mjs", "support_pi/package.json", "support_pi/package-lock.json"}:
+            mappings.append((path, f"{REMOTE_PORTAL_ROOT}/{relative.as_posix()}"))
 
     for source_name, target_name in (
         ("authenticated_egress_probe.py", "authenticated_egress_probe.py"),

@@ -1,0 +1,55 @@
+{
+  "candidate": "ee400086db05b8d41a9278296ff6e69f4595300b",
+  "baseline": "d9d0ac05dfe9e79dcdb2a9dcc3c718b9a773b88c",
+  "environment_before_sha256": "a3985a6777a1f7fddd898d47837b77eea9ba482611681a3d630dcd306dc48938",
+  "files": {
+    "api.py": {
+      "before": "ec63c563e09f3140bd2d14862d9e139fc94515475399ae5c6744b077cebc93ee",
+      "after": "351f8835372588a826e0225b88f6144c5f1f69726a1a2e5f383dda9e05c93b6c"
+    },
+    "helpbot.py": {
+      "before": "a98ce969b4914f3a7951d1f776f87ccc399e2ef6205440b20b0e0ff77e263957",
+      "after": "7aceb767263873ac4824f09a0ad25aa97b1655af6b988b923e24ab97bb76c91b"
+    },
+    "support_agent_harness.py": {
+      "before": "e82eb41b71573b93f96699f80957c23b04b7a366d05a99bb8c2aeed679c07c3d",
+      "after": "edab5857e1ce1d93c9de8beee0766c4f5ffbdf75d82b038cd23543ce3b99dfb5"
+    },
+    "support_agent_service.py": {
+      "before": "46f5e426b87736dfe4569af6965fa665cd0dd2d2e85c1ba34a3561f37a393914",
+      "after": "8dca1e5478092f98473b0c9f2781a4ba9c1934a498481c5e4432064627241ded"
+    },
+    "support_case_context.py": {
+      "before": "6e55ec9ace9e6cccdade1c7c62a1fa11537db04d367e834452d755d0d04715b0",
+      "after": "f1d783924a231daf3a7a8516fdaa8e1715fbba1277bae44eda9c04719bf316fc"
+    },
+    "support_case_tools.py": {
+      "before": null,
+      "after": "ffa309631f25977eb71ca26173e76027a5d1ccd8748e30be1f66badec9fd3e23"
+    },
+    "support_pi_bridge.py": {
+      "before": null,
+      "after": "0b8e3317206dbf9f7eb9d126b963d8d94af0167aaf5dc40a71d48654ad475e91"
+    },
+    "support_work_service.py": {
+      "before": "54e7bc63262e848f5bb321b2ec3da345e22cb1569e4f9e610b6e3684ffcae104",
+      "after": "b0eaa1b4a1255602f868b8a970503b557a42661929d2282d25c7035211081f5f"
+    },
+    "tickets_repo.py": {
+      "before": "0f09cab5f56e702ccaa58704541fb81a80cd45cf07027b40d1e936c67ce26cb3",
+      "after": "aa1ffa46e0a91a0f4b2538ae23f753dad48502263ebc1283d7493a8be801d7a2"
+    },
+    "support_pi/runner.mjs": {
+      "before": null,
+      "after": "9bffbbb2d874153d34e54b5c81a45f35eb518ebfe52858d33c12ed322bc8b44b"
+    },
+    "support_pi/package.json": {
+      "before": null,
+      "after": "42d130c12c9974f5453e0449014456cf524ca6059442bdad85753803c3e9dbc0"
+    },
+    "support_pi/package-lock.json": {
+      "before": null,
+      "after": "065b9874a9e04d6b63575dd0096da119cadf4db3eead463123d49be0769f9aba"
+    }
+  }
+}

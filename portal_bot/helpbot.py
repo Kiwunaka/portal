@@ -274,6 +274,10 @@ async def _maybe_generate_support_ai_reply(message: Message, *, ticket_id: int, 
     try:
         if revision is not None and pending_case_message(session, tg_id, ticket_id, lock=True) != revision:
             return None
+        if revision is not None and getattr(result, "case_actions", ()):
+            from support_case_tools import persist_case_actions
+            if persist_case_actions(session, ticket_id, result.case_actions):
+                reply += "\n\nОбращение передано в очередь оператора."
         add_ticket_message(
             session,
             ticket_id=ticket_id,

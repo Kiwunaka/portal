@@ -23,7 +23,8 @@ def pending_case_message(session, owner_id: int, ticket_id: int, *, lock: bool =
     query = session.query(SupportTicket).filter_by(id=ticket_id)
     ticket = (query.with_for_update() if lock else query).one_or_none()
     user = session.get(User, owner_id)
-    if not ticket or not user or ticket.status != "open" or ticket.assigned_admin_tg_id:
+    if (not ticket or not user or ticket.status != "open" or ticket.assigned_admin_tg_id
+            or (ticket.escalated_at and ticket.waiting_on == "operator")):
         return None
     if not ((ticket.account_id and ticket.account_id == user.account_id)
             or (not ticket.account_id and ticket.user_tg_id == owner_id)):
@@ -184,7 +185,8 @@ def parse_attachment_analysis(content: str) -> dict:
             **{key: safe_text(result[key], limit) for key, limit in ATTACHMENT_FIELDS.items()}}
 
 
-async def load_case(owner_id: int, ticket_id: int, bot=None, *, analyze_attachment) -> dict:
+async def load_case(owner_id: int, ticket_id: int, bot=None, *, analyze_attachment,
+                    section: str = "all") -> dict:
     from db import SessionLocal
     def read():
         with SessionLocal() as session:
@@ -192,6 +194,10 @@ async def load_case(owner_id: int, ticket_id: int, bot=None, *, analyze_attachme
     data, files, provider_checks = await asyncio.to_thread(read)
     if data["operator_handling"]:
         return data
+    if section not in {"all", "attachments"}:
+        files = []
+    if section not in {"all", "payments"}:
+        provider_checks = []
     async def read_attachment(file):
         mime = file.get("mime", "")
         if "stored_name" in file:

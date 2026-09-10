@@ -1898,3 +1898,26 @@ Post-deploy checks should also confirm:
 - `robots.txt`, `sitemap.xml`, `manifest.webmanifest`, `favicon.ico`, and `apple-icon.png` return dedicated content instead of homepage HTML
 - public homepage and SEO landing pages emit canonical, Open Graph, Twitter, and JSON-LD metadata
 - node health findings are reported with explicit `current-origin`, `brain-origin`, and `RU-origin` check labels
+
+### Support pi runtime
+
+The DeepSeek 4.1 ticket agent requires Node.js 24.15.0 at
+`/opt/pokrov-support-node/bin/node`; systemd API/helpbot support environment sets
+`SUPPORT_PI_NODE` to this absolute path. Node is installed from the official
+Linux x64 archive after SHA-256 verification against its release SHASUMS file.
+The pi runner and its package/lock files are tracked runtime payload. Install
+its exact lock using `npm ci --ignore-scripts --no-audit --no-fund` in an isolated
+staging directory with this Node binary on PATH; no package install runs during
+customer requests. Keep the prepared dependency directory and rollback version,
+then point `portal_bot/support_pi/node_modules` to those prepared dependencies.
+Record the normalized-LF SHA-256 of the installed `package-lock.json` in
+`portal_bot/support_pi/installed-lock.sha256`.
+
+The normal backend deploy includes the runner/package/lock files and refuses
+promotion if the staged lock differs from the prepared dependency receipt.
+Dependency changes therefore need a separately prepared, smoke-tested install
+and reversible symlink/receipt switch together with that candidate; the normal
+deployer does not update npm dependencies or download Node implicitly. Scoped
+support deployment retains the previous runtime files, dependency link and
+support environment, restarts only API/helpbot and checks delayed health. See
+[the support case contract](../architecture/support-feedback-flow.md#pi-investigation-for-ticket-conversations).
