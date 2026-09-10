@@ -126,6 +126,17 @@ def _support_reply_html(text: str) -> str:
     return escaped
 
 
+async def _send_support_ai_reply(message: Message, reply: str, ticket_id: int) -> None:
+    # Split before HTML escaping so tags/entities cannot be cut. 1800 Unicode
+    # code points leave room even when Telegram counts astral symbols as two.
+    parts = [reply[i:i + 1800] for i in range(0, len(reply), 1800)]
+    for index, part in enumerate(parts):
+        await message.answer(
+            _support_reply_html(part), parse_mode="HTML",
+            reply_markup=_support_ai_reply_keyboard(ticket_id) if index == len(parts) - 1 else None,
+        )
+
+
 def _main_menu(is_admin: bool) -> InlineKeyboardMarkup:
     rows = [
         [InlineKeyboardButton(text="➕ Новое обращение", callback_data="hb_ticket_new")],
@@ -868,8 +879,7 @@ async def capture_ticket_attachment(message: Message) -> None:
             text=(getattr(message, "caption", None) or "Проверьте вложение и состояние моего доступа."),
         )
         if reply:
-            await message.answer(_support_reply_html(reply), parse_mode="HTML",
-                                 reply_markup=_support_ai_reply_keyboard(ticket_id))
+            await _send_support_ai_reply(message, reply, ticket_id)
 
 
 @router.message(F.text)
@@ -952,15 +962,7 @@ async def capture_ticket_reply(message: Message) -> None:
         assistant_reply = await _maybe_generate_support_ai_reply(message, ticket_id=ticket_id, text=text)
 
     if assistant_reply:
-        await message.answer(
-            (
-                f"<b>AI-подсказка по обращению #{ticket_id}</b>\n\n"
-                f"{_support_reply_html(assistant_reply)}\n\n"
-                "<i>Обращение осталось открытым: оператор увидит историю и сможет дополнить ответ.</i>"
-            ),
-            reply_markup=_support_ai_reply_keyboard(ticket_id),
-            parse_mode="HTML",
-        )
+        await _send_support_ai_reply(message, assistant_reply, ticket_id)
         return
 
     await message.answer(

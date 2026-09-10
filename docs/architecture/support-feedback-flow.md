@@ -84,7 +84,8 @@ Last updated: 2026-09-09
 - Runtime home: `portal-api` and `portal-helpbot` on `brain`.
 - Runtime facade and legacy helper: `portal_bot/support_agent_service.py` and `portal_bot/support_ai_service.py`; bounded harness: `portal_bot/support_agent_harness.py`; bounded OpenAI-compatible adapter: `portal_bot/support_agent_provider.py`.
 - Deployable allowlisted assets are `shared/support-agent-policy.json` and `shared/support-ai-knowledge.json`, uploaded under `/root/shared/`.
-- The canonical model identity is `deepseek-v4-flash-0731` with medium reasoning. The transport is the exact OpenRouter base `https://openrouter.ai/api/v1`, where the adapter maps the canonical identity to the provider wire slug `deepseek/deepseek-v4-flash-0731`. The request deliberately omits `max_tokens` so internal reasoning cannot exhaust a short completion cap, while the private reasoning trace is excluded from the response. The route uses a 45-second provider window inside a 50-second harness deadline by default, including when those two environment values are omitted. The explicitly supported alternative is deepseek-v4-flash-vision-exp, sent as deepseek/deepseek-v4-flash-vision-exp, with Fireworks preferred and provider data collection denied. Other provider URLs, models, and reasoning profiles fail closed before either provider path. Credentials remain server-environment only.
+- The selected support profile is `deepseek-v4.1-flash` with high reasoning, sent as `deepseek/deepseek-v4.1-flash` through the exact OpenRouter base. Text synthesis and isolated attachment analysis use the same model. Its endpoint requires `json_object` and `data_collection=allow`; local closed-schema and safety validation remains mandatory. The owner selected this route after the model-matrix disclosure on 2026-09-10. The older 0731 and Vision Exp profiles remain available with medium reasoning for rollback; Vision Exp retains Fireworks preference and collection denied. Other profiles fail closed. Credentials stay in the server environment.
+- No support request sends `max_tokens` or another completion-token cap; `SUPPORT_AI_MAX_OUTPUT_TOKENS` has been removed. Private reasoning is excluded from returned content. Provider timeout (45 seconds), total deadline (50 seconds), streamed-body and safety limits remain. Validated replies may contain up to 12,000 characters; Telegram sends them in ordered chunks with follow-up buttons on the last chunk. Persistent ticket history retains the complete answer; short process memory retains the first 1,200 characters.
 - The feature is disabled by default. `SUPPORT_AI_ENABLED=false` always selects deterministic local fallback. With it enabled, `SUPPORT_AI_AGENT_ENABLED=false` selects the legacy one-call helper and `SUPPORT_AI_AGENT_ENABLED=true` selects the bounded harness. The legacy and harness paths never run together.
 - Before any provider call, code retrieves at most three topics from the validated public-support KB. `confident` routing requires both an active high-precision intent rule and the expected topic-body fingerprint; all other supported retrieval is only candidate context. Ten narrow `confident` topics have an additional direct-render allowlist: for a new session, their fingerprint-bound user-facing body is returned by code with zero provider requests. WARP, location choice, both route modes, notifications, trial limitations, Telegram bonus, and payment-not-applied questions also have fingerprint-bound confident routing so the provider can give concrete public diagnostics and a provider failure can still return those safe steps before human handoff. For a bounded follow-up with no explicit new intent, the established active session issue is pinned as the first candidate source without upgrading confidence; an explicit new intent replaces it. Model-visible topic copy names official surfaces without embedding literal domains or URLs that the output contract forbids.
 - Candidate answers retain context provenance but no grounding claim and therefore receive only generic public actions. Confident answers may use the single code-owned grounding topic to select existing topic-specific actions; model text never selects actions, source labels, or escalation metadata.
@@ -193,8 +194,9 @@ account facts and unrelated history are never sent to this analysis stage.
 Vision receives only a fixed internal extraction prompt and the images, with no
 tools or ability to send messages. Its closed JSON contains `visible_text`
 (1200 characters), `visual_details` (600) and `uncertainty` (200); code rejects
-extra fields, invalid types and over-limit strings, then redacts credentials
-and PII before passing the projection to the main support synthesis. The
+extra fields, invalid types and raw replies over 16,000 characters, then redacts
+credentials and PII before bounding each field to its projection limit. A slightly
+longer field no longer discards the entire file. Code passes only that projection to the main support synthesis. The
 intermediate response is not stored as a ticket message or returned directly
 to the user. It remains untrusted evidence, including any instructions depicted
 in the attachment. PDF projections explicitly state the three-page limit.
@@ -209,7 +211,7 @@ for its provider call and eight seconds for PDF conversion; the existing
 25-second case-load and 50-second total harness deadlines still apply. An
 attachment failure is labelled `unreadable_or_over_limit` while completed
 payment/access facts remain available. No local OCR or alternate-provider
-fallback runs. Text-model configurations cannot make the Vision call.
+fallback runs. Only the supported multimodal profiles can analyze attachments.
 
 The model may summarize the collected facts without a KB keyword match. It has
 no model-visible tools or write access. Unresolved discrepancies retain a useful

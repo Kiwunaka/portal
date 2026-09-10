@@ -55,7 +55,7 @@ def _valid_policy() -> dict[str, object]:
         "output_contract": {
             "language": "ru",
             "format": "json_v1",
-            "max_reply_chars": 1200,
+            "max_reply_chars": 12000,
         },
         "escalation_rules": [
             "uncertain",
@@ -172,7 +172,7 @@ def test_repository_policy_asset_matches_the_closed_schema() -> None:
 
     snapshot = SupportAgentPolicyStore().load(REPO_ROOT / "shared" / "support-agent-policy.json")
     assert snapshot.policy.scope == "public_support"
-    assert snapshot.policy.max_reply_chars == 1200
+    assert snapshot.policy.max_reply_chars == 12000
 
 
 def test_synthesis_policy_has_minimal_output_and_no_tool_or_model_owned_metadata() -> None:

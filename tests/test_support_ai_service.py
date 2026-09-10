@@ -152,7 +152,6 @@ class SupportAIServiceTests(unittest.TestCase):
             knowledge_path=str(knowledge_path),
             max_user_chars=500,
             max_answer_chars=2000,
-            max_output_tokens=700,
         )
         fake_factory = _FakeSessionFactory()
         try:
@@ -1648,7 +1647,6 @@ class SupportAIServiceTests(unittest.TestCase):
         self.assertEqual(config.model, "deepseek-v4-flash-0731")
         self.assertEqual(config.reasoning_effort, "medium")
         self.assertEqual(config.max_context_chars, 30000)
-        self.assertEqual(config.max_output_tokens, 1200)
         self.assertEqual(config.timeout_seconds, 45.0)
 
     def test_agent_timeout_and_context_env_ceilings_are_exact_and_clamped(self) -> None:
@@ -1693,14 +1691,14 @@ class SupportAIServiceTests(unittest.TestCase):
         self.assertEqual(exact.timeout_seconds, 45.0)
         self.assertEqual(clamped.timeout_seconds, 45.0)
 
-    def test_provider_output_budget_is_hard_capped_at_live_validated_limit(self) -> None:
+    def test_provider_output_budget_is_not_configured(self) -> None:
         import support_ai_service
 
         config = support_ai_service.SupportAIConfig.from_env(
             {"SUPPORT_AI_MAX_OUTPUT_TOKENS": "1201"}
         )
+        self.assertNotIn("max_tokens", support_ai_service.provider_generation_controls(config))
 
-        self.assertEqual(config.max_output_tokens, 1200)
 
     def test_xcody_payload_has_no_openrouter_fields_or_headers(self) -> None:
         import support_ai_service

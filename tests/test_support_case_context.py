@@ -52,8 +52,12 @@ def test_vision_projection_redacts_and_rejects_extra_fields():
     assert "person@example.org" not in json.dumps(result) and "secret-value" not in json.dumps(result)
     with pytest.raises(ValueError, match="schema"):
         parse_attachment_analysis(json.dumps({**value, "reply": "внутренний ответ"}))
+    long_value = {**value, "uncertainty": "Не удалось определить источник. " * 12}
+    projected = parse_attachment_analysis(json.dumps(long_value))
+    assert len(projected["uncertainty"]) == 200
+    assert projected["visible_text"] == result["visible_text"]
     with pytest.raises(ValueError, match="schema"):
-        parse_attachment_analysis(json.dumps({**value, "visible_text": "x" * 1201}))
+        parse_attachment_analysis(json.dumps({**value, "uncertainty": None}))
 
 
 def test_images_and_pdf_pages_are_prepared_without_ocr(monkeypatch):

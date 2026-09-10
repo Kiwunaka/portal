@@ -202,11 +202,13 @@ Repo-side deploy rule:
 - the deploy payload must include the full tracked JSON backend truth and contract tree under `/root/shared/`, including nested observability and support contracts rather than only the historical root JSON allowlist
 - the deploy step should be treated as failed until delayed unit stability and public API health both pass
 - support AI is a `portal-api` and `portal-helpbot` runtime feature and remains disabled by default. The exact route table is: `SUPPORT_AI_ENABLED=false` selects local fallback; `SUPPORT_AI_ENABLED=true` with `SUPPORT_AI_AGENT_ENABLED=false` selects the legacy one-call helper; both flags `true` select the code-owned harness. There is no shadow or double call. Immediate rollback from the harness is `SUPPORT_AI_AGENT_ENABLED=false`; disabling all provider use is `SUPPORT_AI_ENABLED=false`.
-- both provider paths use exact OpenRouter `POST /v1/chat/completions`. The facade rejects any other provider URL, model, or reasoning profile before a provider call. The locked profile is canonical `deepseek-v4-flash-0731` (`deepseek/deepseek-v4-flash-0731` on the wire), medium provider-managed reasoning with the private trace excluded, a 45-second provider timeout inside a 50-second total deadline, at most one request per eligible message, and at most two concurrent provider runs. The 45/50-second windows are also the exact-route defaults when their environment values are omitted. The request intentionally omits `max_tokens` for this reasoning model and sends exactly one system message plus one user message with no `tools`, `tool_choice`, retry, or continuation payload.
+- both provider paths use exact OpenRouter `POST /v1/chat/completions`. The facade rejects any other provider URL, model, or reasoning profile before a provider call. The selected profile is canonical `deepseek-v4.1-flash` (`deepseek/deepseek-v4.1-flash` on the wire), high provider-managed reasoning with the private trace excluded, a 45-second provider timeout inside a 50-second total deadline, at most one request per eligible message, and at most two concurrent provider runs. The 45/50-second windows are also the exact-route defaults when their environment values are omitted. The request intentionally omits `max_tokens` for this reasoning model and sends exactly one system message plus one user message with no `tools`, `tool_choice`, retry, or continuation payload.
 - publish only the following secret-free harness configuration; keep the real key solely in the service environment through blank-at-rest `SUPPORT_AI_API_KEY`. `XCODY_API_KEY` remains a legacy compatibility alias only:
 
-The support case alternative is `SUPPORT_AI_MODEL=deepseek/deepseek-v4-flash-vision-exp`
-with the same medium reasoning and exact OpenRouter route. Its routing prefers
+DeepSeek 4.1 high uses `json_object` with local schema validation and explicitly
+allows provider data collection, as disclosed before the owner selected it. Both
+text and attachments use this profile. The rollback alternative is
+`SUPPORT_AI_MODEL=deepseek/deepseek-v4-flash-vision-exp` with medium reasoning. Its routing prefers
 Fireworks and denies provider data collection. Ticket case reads and isolated Vision analysis
 follow [the support case boundary](../architecture/support-feedback-flow.md#read-only-ticket-case-context).
 Install `poppler-utils` for bounded PDF page rendering; Pillow remains the
@@ -223,8 +225,8 @@ SUPPORT_AI_ENABLED=false
 SUPPORT_AI_AGENT_ENABLED=false
 SUPPORT_AI_API_BASE_URL=https://openrouter.ai/api/v1
 SUPPORT_AI_API_KEY=
-SUPPORT_AI_MODEL=deepseek/deepseek-v4-flash-0731
-SUPPORT_AI_REASONING_EFFORT=medium
+SUPPORT_AI_MODEL=deepseek/deepseek-v4.1-flash
+SUPPORT_AI_REASONING_EFFORT=high
 SUPPORT_AI_TIMEOUT_SECONDS=45
 SUPPORT_AI_RUN_DEADLINE_SECONDS=50
 SUPPORT_AI_MAX_CONCURRENCY=2
@@ -235,7 +237,6 @@ SUPPORT_AI_OWNER_RATE_LIMIT_PER_MINUTE=6
 SUPPORT_AI_MAX_RATE_BUCKETS=1024
 SUPPORT_AI_PRE_RETRIEVAL_LIMIT=3
 SUPPORT_AI_MAX_INPUT_CHARS=30000
-SUPPORT_AI_MAX_OUTPUT_TOKENS=1200
 ```
 
 - code pre-retrieves at most three topics from the validated deployed policy/KB snapshots. It has no model-visible tool and no DB, account, attachment, key/config, shell, arbitrary-file, or command-execution access; `safeDiagnostics` values never enter provider context. Provider/parse/safety failure can use a local KB answer only for fingerprint-bound confident routing; all other insufficient-evidence paths transfer to a human.

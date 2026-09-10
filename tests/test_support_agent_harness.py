@@ -437,6 +437,21 @@ def test_owned_case_stops_for_operator(harness_case_factory):
     assert case.adapter.call_count == 0
 
 
+def test_long_case_answer_is_returned_with_bounded_session_memory(harness_case_factory):
+    from support_agent_provider import SynthesisTurn, ProviderUsage
+    case = harness_case_factory(name="long_case", input_mode="safe", retrieval="none",
+                                provider_plan="answer", store_plan="ok")
+    reply = "По базе доступ активен. " * 150
+    async def complete(**kwargs):
+        return SynthesisTurn(json.dumps({"schema_version": "1", "status": "answer", "reply": reply}),
+                             "stop", ProviderUsage(1, 1, 0), 1)
+    async def load(analyze_attachment):
+        return {"operator_handling": False}
+    case.harness.adapter.complete_synthesis = complete
+    result = asyncio.run(case.harness.run(replace(case.request, case_loader=load)))
+    assert result.answer_origin == "case_model" and result.reply == reply.strip()
+
+
 def test_case_attachment_analysis_is_internal_and_usage_is_aggregated(harness_case_factory):
     from support_agent_provider import ProviderUsage, SynthesisTurn
     case = harness_case_factory(name="vision_case", input_mode="safe", retrieval="none",

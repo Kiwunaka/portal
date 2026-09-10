@@ -41,11 +41,15 @@ def test_helpbot_conversation_is_scoped_to_ticket():
     assert first.internal_session_key != second.internal_session_key
 
 
-def test_vision_profile_and_case_escalation_preserve_collected_reply():
+@pytest.mark.parametrize("model,effort,collection", [
+    ("deepseek-v4-flash-vision-exp", "medium", "deny"),
+    ("deepseek-v4.1-flash", "high", "allow"),
+])
+def test_multimodal_profile_and_case_escalation_preserve_collected_reply(model, effort, collection):
     from dataclasses import replace
     from support_agent_service import SupportAgentService
     from support_ai_service import provider_wire_model, provider_response_controls
-    config = replace(_config(), model="deepseek-v4-flash-vision-exp")
+    config = replace(_config(), model=model, reasoning_effort=effort)
     harness = _HarnessSpy(_agent_result(status="escalate", answer_origin="case_model", grounding_topic_id=None))
     service = SupportAgentService(config=config, env={"SUPPORT_AI_AGENT_ENABLED": "true"},
                                   harness_factory=_HarnessFactory(harness))
@@ -53,8 +57,8 @@ def test_vision_profile_and_case_escalation_preserve_collected_reply():
                                          message="Оплата прошла, а доступа нет"))
     assert result.reply == "Безопасный ответ агента." and result.should_escalate
     assert harness.requests[0].case_loader is not None
-    assert provider_wire_model(config) == "deepseek/deepseek-v4-flash-vision-exp"
-    assert provider_response_controls(config)["provider"]["data_collection"] == "deny"
+    assert provider_wire_model(config) == "deepseek/" + model
+    assert provider_response_controls(config)["provider"]["data_collection"] == collection
 
 
 def _agent_result(
@@ -273,23 +277,11 @@ def test_exact_openrouter_route_defaults_to_long_reasoning_runtime_window() -> N
     assert settings.run_deadline_seconds == 50.0
 
 
-def test_agent_output_budget_defaults_to_1200_and_rejects_higher_values() -> None:
+def test_obsolete_token_limit_cannot_disable_agent() -> None:
     from support_agent_service import SupportAgentRuntimeSettings
-
-    default_settings = SupportAgentRuntimeSettings.from_env({})
-    allowed_settings = SupportAgentRuntimeSettings.from_env(
-        {"SUPPORT_AI_MAX_OUTPUT_TOKENS": "1200"}
-    )
-    oversized_settings = SupportAgentRuntimeSettings.from_env(
-        {"SUPPORT_AI_MAX_OUTPUT_TOKENS": "1201"}
-    )
-
-    assert default_settings.valid is True
-    assert default_settings.max_output_tokens == 1200
-    assert allowed_settings.valid is True
-    assert allowed_settings.max_output_tokens == 1200
-    assert oversized_settings.valid is False
-    assert oversized_settings.invalid_reason == "support_ai_max_output_tokens_invalid"
+    settings = SupportAgentRuntimeSettings.from_env({"SUPPORT_AI_MAX_OUTPUT_TOKENS": "1201"})
+    assert settings.valid
+    assert not hasattr(settings, "max_output_tokens")
 
 
 def test_confident_model_answer_uses_topic_actions() -> None:

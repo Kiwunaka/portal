@@ -265,6 +265,20 @@ class HelpbotLifecycleTests(unittest.TestCase):
         self.assertIn(f"hb_aiq_steps_{ticket_id}", buttons)
         self.assertIn(f"hb_aiq_operator_{ticket_id}", buttons)
 
+    def test_long_ai_reply_is_delivered_without_cut_html_or_lost_text(self) -> None:
+        import html
+        reply = "Текст < & 🙂 " * 600
+        message = _FakeMessage(1001)
+        asyncio.run(self.helpbot._send_support_ai_reply(message, reply, 42))
+        self.assertGreater(len(message.answers), 1)
+        for text, kwargs in message.answers:
+            self.assertLessEqual(len(html.unescape(text).encode("utf-16-le")) // 2, 4096)
+            self.assertEqual(kwargs["parse_mode"], "HTML")
+        self.assertEqual("".join(html.unescape(text) for text, _ in message.answers).replace(" ", ""),
+                         reply.replace(" ", ""))
+        self.assertTrue(message.answers[-1][1]["reply_markup"])
+        self.assertTrue(all(kwargs["reply_markup"] is None for _, kwargs in message.answers[:-1]))
+
     def test_helpbot_ai_quick_replies_prompt_details_or_call_operator(self) -> None:
         bot = _FakeBot()
 

@@ -117,7 +117,6 @@ def _config():
         reasoning_effort="medium",
         timeout_seconds=20.0,
         max_context_chars=30_000,
-        max_output_tokens=1_200,
     )
 
 
@@ -150,6 +149,26 @@ def _adapter_with_response(payload: object, *, clock=None):
         XCodyChatAdapter(config=_config(), session_factory=factory, monotonic=clock),
         factory,
     )
+
+
+def test_deepseek41_high_uses_uncapped_json_for_text_and_images():
+    from dataclasses import replace
+    from support_agent_provider import XCodyChatAdapter
+    factory = _FakeSessionFactory(payload=SAFE_RESPONSE)
+    adapter = XCodyChatAdapter(config=replace(_config(), model="deepseek-v4.1-flash",
+                                             reasoning_effort="high"), session_factory=factory)
+    asyncio.run(adapter.complete_synthesis(messages=[{"role": "system", "content": "JSON"},
+                                                    {"role": "user", "content": "Вопрос"}], request_timeout=45))
+    attachment_factory = _FakeSessionFactory(payload=SAFE_RESPONSE)
+    adapter.session_factory = attachment_factory
+    asyncio.run(adapter.complete_attachment(images=[("image/png", b"fixture")], request_timeout=18))
+    for request in factory.posts + attachment_factory.posts:
+        payload = request["json"]
+        assert payload["model"] == "deepseek/deepseek-v4.1-flash"
+        assert payload["reasoning"] == {"effort": "high", "exclude": True}
+        assert payload["response_format"] == {"type": "json_object"}
+        assert payload["provider"]["data_collection"] == "allow"
+        assert not {"max_tokens", "max_completion_tokens", "tools"} & payload.keys()
 
 
 def test_exact_xcody_synthesis_payload_and_normalized_usage() -> None:
@@ -246,7 +265,6 @@ def test_exact_openrouter_route_maps_canonical_deepseek_model() -> None:
         reasoning_effort="medium",
         timeout_seconds=24.0,
         max_context_chars=30_000,
-        max_output_tokens=1_200,
     )
     factory = _FakeSessionFactory(payload=SAFE_RESPONSE)
     adapter = XCodyChatAdapter(config=config, session_factory=factory)

@@ -1,0 +1,38 @@
+{
+  "candidate": "0d66797d57bbdd0a90b143425fbddb75f9c4def1",
+  "baseline": "25c6f7a13a04ee41fa6a86b84fbf90e045580a2f",
+  "files": {
+    "portal_bot/helpbot.py": {
+      "before": "c1af03837c5d60125f671f11b3b24793a92ff5c774bd2d2127cba5bcfc9b7120",
+      "after": "a98ce969b4914f3a7951d1f776f87ccc399e2ef6205440b20b0e0ff77e263957"
+    },
+    "portal_bot/support_ai_service.py": {
+      "before": "2bb2f5fbbf1362cba064e257cb87ab8efedd073b885134542320972c1fc4ae73",
+      "after": "a892399008f2230c9a7371c33ea47e692c4230bc5992dae83127fef2e131dca2"
+    },
+    "portal_bot/support_agent_service.py": {
+      "before": "a5b4ac0036bc947927260459157543191c339af1d26d2947141104c025885732",
+      "after": "46f5e426b87736dfe4569af6965fa665cd0dd2d2e85c1ba34a3561f37a393914"
+    },
+    "portal_bot/support_agent_provider.py": {
+      "before": "181e2e7d68d4578d1cc9a65d7ce16cc2826467a5892f86caccf9b5941e12c69f",
+      "after": "f9e0918a78a7ddfb6fd8d4c9087d252b28980bcee8358df64ff4caf88f7e4720"
+    },
+    "portal_bot/support_agent_harness.py": {
+      "before": "b81eeef1153215d11107db2ea3022e8e4ac293fb6e25a37f18a6124d6830b722",
+      "after": "e82eb41b71573b93f96699f80957c23b04b7a366d05a99bb8c2aeed679c07c3d"
+    },
+    "portal_bot/support_agent_policy.py": {
+      "before": "cd28598e2b94987ad0d28e3362a5d162e05cd74c178d07817f5c6688a5b34e05",
+      "after": "1fbd5aefdd32b711e58ee00982e2d7c147dba8bf6b224e05825a96c8737692f3"
+    },
+    "portal_bot/support_case_context.py": {
+      "before": "736a0de8f3acb8ee233e985fea6e914ed1f0f0376ff11924db9a11506eb3bb0f",
+      "after": "6e55ec9ace9e6cccdade1c7c62a1fa11537db04d367e834452d755d0d04715b0"
+    },
+    "shared/support-agent-policy.json": {
+      "before": "04f3bce9766adb8f996bccb62e4ee8e38b21c7140d48d027d419c765abaa13f8",
+      "after": "2e55206265ca93578a068991f0aa0a7d61607b19e0c677e07d2d244c381db26c"
+    }
+  }
+}
