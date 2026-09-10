@@ -1,7 +1,9 @@
 import base64
+import errno
 import importlib
 import json
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -119,3 +121,43 @@ def test_platform_worker_wiring_is_opt_in() -> None:
     assert (
         '_supervise_job("support_bundle_ingest", support_bundle_ingest_job)' in source
     )
+
+
+def test_support_health_reports_stopped_worker_and_corrupt_signal(monkeypatch, tmp_path) -> None:
+    health = importlib.import_module("support_bundle_health")
+    accepted = tmp_path / "accepted"
+    monkeypatch.setenv("POKROV_SUPPORT_BUNDLE_ACCEPTED_DIR", str(accepted))
+    now = datetime.now(timezone.utc)
+    observed = int(now.timestamp())
+    assert health.write_support_bundle_health(accepted, {"started_at": observed})
+    assert health.support_bundle_health_alerts(now=now) == []
+    assert health.support_bundle_health_alerts(now=now + timedelta(seconds=61))[0]["fingerprint"] == "support_bundle_health_unavailable"
+    assert health.write_support_bundle_health(accepted, {
+        "ingest": {"observed_at": observed, "errors": 0},
+        "retention": {"observed_at": observed, "errors": 0},
+    })
+    assert health.support_bundle_health_alerts(now=now) == []
+    stale = health.support_bundle_health_alerts(now=now + timedelta(seconds=601))
+    assert [item["fingerprint"] for item in stale] == ["support_bundle_health_ingest"]
+    assert stale[0]["metadata"]["state"] == "stale"
+    (tmp_path / health.HEALTH_FILE_NAME).write_text('{"schema_version":2,"raw":"planted-private-value"}', encoding="utf8")
+    invalid = health.support_bundle_health_alerts(now=now)
+    assert invalid[0]["fingerprint"] == "support_bundle_health_unavailable"
+    assert "planted-private-value" not in json.dumps(invalid)
+
+
+def test_support_health_disk_full_preserves_previous_signal(monkeypatch, tmp_path) -> None:
+    health = importlib.import_module("support_bundle_health")
+    accepted = tmp_path / "accepted"
+    previous = {"ingest": {"observed_at": 123, "errors": 0}}
+    assert health.write_support_bundle_health(accepted, previous)
+    stored = tmp_path / health.HEALTH_FILE_NAME
+    before = stored.read_bytes()
+
+    def disk_full(*_args):
+        raise OSError(errno.ENOSPC, "fixture disk full")
+
+    monkeypatch.setattr(health.os, "replace", disk_full)
+    assert not health.write_support_bundle_health(accepted, {"ingest": {"observed_at": 124, "errors": 1}})
+    assert stored.read_bytes() == before
+    assert list(tmp_path.iterdir()) == [stored]

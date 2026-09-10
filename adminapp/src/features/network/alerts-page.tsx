@@ -30,6 +30,7 @@ const SOURCE_LABELS: Record<string, string> = {
   free_tier: "Архив FREE",
   security: "Безопасность",
   ru_probe: "RU-origin",
+  support_bundle: "Диагностика",
 };
 
 function tone(value: string): Tone {

@@ -68,6 +68,7 @@ from support_bundle_worker import (
     load_configured_support_decryptor,
     run_support_bundle_ingest_once,
 )
+from support_bundle_health import write_support_bundle_health
 from operator_observability_service import run_operator_retention_once
 from payment_entitlement_outbox import run_payment_entitlement_outbox_once
 from commercial_capacity_service import run_commercial_capacity_evaluation
@@ -77,6 +78,7 @@ from news_draft_service import collect_news_drafts, news_draft_interval_seconds,
 import incident_service
 
 logger = logging.getLogger(__name__)
+_SUPPORT_BUNDLE_HEALTH: dict = {}
 
 
 BOT_USERNAME = (os.getenv("BOT_USERNAME") or "pokrov_vpnbot").lstrip("@")
@@ -1169,8 +1171,23 @@ async def support_attachment_cleanup_job() -> None:
         await asyncio.sleep(SUPPORT_ATTACHMENT_CLEANUP_INTERVAL_SECONDS)
 
 
+def _record_support_bundle_health(stage: str, *, errors: int = 0) -> None:
+    if not SUPPORT_BUNDLE_WORKER_ENABLED:
+        return
+    _SUPPORT_BUNDLE_HEALTH[stage] = {
+        "observed_at": int(datetime.now(timezone.utc).timestamp()),
+        "errors": min(1000, max(0, int(errors))),
+    }
+    if not write_support_bundle_health(SUPPORT_BUNDLE_ACCEPTED_DIR, _SUPPORT_BUNDLE_HEALTH):
+        logger.warning("support_bundle_health write_failed")
+
+
 async def support_bundle_ingest_job() -> None:
-    decryptor = load_configured_support_decryptor()
+    try:
+        decryptor = load_configured_support_decryptor()
+    except Exception:
+        _record_support_bundle_health("ingest", errors=1)
+        raise
     while True:
         try:
             report = await asyncio.to_thread(
@@ -1181,6 +1198,7 @@ async def support_bundle_ingest_job() -> None:
                 accepted_root=SUPPORT_BUNDLE_ACCEPTED_DIR,
                 limit=SUPPORT_BUNDLE_WORKER_BATCH_LIMIT,
             )
+            _record_support_bundle_health("ingest", errors=report.failed)
             if report.selected or report.failed:
                 logger.info(
                     "support_bundle_ingest selected=%s validated=%s rejected=%s failed=%s",
@@ -1190,6 +1208,7 @@ async def support_bundle_ingest_job() -> None:
                     report.failed,
                 )
         except Exception:
+            _record_support_bundle_health("ingest", errors=1)
             logger.exception("support_bundle_ingest_job failed")
         await asyncio.sleep(SUPPORT_BUNDLE_WORKER_INTERVAL_SECONDS)
 
@@ -1390,10 +1409,12 @@ async def telemetry_retention_job() -> None:
             now = _utcnow()
             deleted = run_telemetry_retention_once(session=session, now=now)
             session.commit()
+            _record_support_bundle_health("retention", errors=deleted.get("file_errors", 0))
             if any(deleted.values()):
                 logger.info("telemetry_retention deleted=%s", deleted)
         except Exception:
             session.rollback()
+            _record_support_bundle_health("retention", errors=1)
             logger.exception("telemetry_retention_job failed")
         finally:
             session.close()
@@ -1479,6 +1500,10 @@ async def _supervise_job(name: str, job_factory, *, restart_delay_seconds: int =
 
 async def main() -> None:
     init_db()
+    if SUPPORT_BUNDLE_WORKER_ENABLED:
+        _SUPPORT_BUNDLE_HEALTH["started_at"] = int(datetime.now(timezone.utc).timestamp())
+        if not write_support_bundle_health(SUPPORT_BUNDLE_ACCEPTED_DIR, _SUPPORT_BUNDLE_HEALTH):
+            logger.warning("support_bundle_health write_failed")
     tasks = [
         asyncio.create_task(_supervise_job("welcome_chain", welcome_chain_job)),
         asyncio.create_task(_supervise_job("abandoned_cart", abandoned_cart_job)),

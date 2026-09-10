@@ -474,6 +474,41 @@ def _seed_ru_read_fixture(api, *, now: datetime) -> None:
         s.close()
 
 
+def test_support_worker_errors_create_and_resolve_durable_alerts(monkeypatch, tmp_path) -> None:
+    _load_api(monkeypatch, tmp_path)
+    worker_module = importlib.import_module("worker")
+    from admin_ops_service import refresh_ops_alerts_for_current_state
+    from support_bundle_worker import SupportBundleWorkerReport
+
+    accepted = tmp_path / "accepted"
+    monkeypatch.setenv("POKROV_SUPPORT_BUNDLE_ACCEPTED_DIR", str(accepted))
+    monkeypatch.setattr(worker_module, "SUPPORT_BUNDLE_WORKER_ENABLED", True)
+    monkeypatch.setattr(worker_module, "SUPPORT_BUNDLE_ACCEPTED_DIR", accepted)
+    monkeypatch.setattr(worker_module, "load_configured_support_decryptor", lambda: object())
+    failures = {"ingest": 1, "retention": 1}
+    monkeypatch.setattr(worker_module, "run_support_bundle_ingest_once", lambda *_args, **_kwargs: SupportBundleWorkerReport(1, 0, 0, failures["ingest"]))
+    monkeypatch.setattr(worker_module, "run_telemetry_retention_once", lambda **_kwargs: {"file_errors": failures["retention"]})
+
+    async def end_iteration(_delay):
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(worker_module.asyncio, "sleep", end_iteration)
+    for expected in ("active", "resolved"):
+        for job in (worker_module.support_bundle_ingest_job, worker_module.telemetry_retention_job):
+            with pytest.raises(asyncio.CancelledError):
+                asyncio.run(job())
+        with worker_module.SessionLocal() as session:
+            rows, notifications, _, _ = refresh_ops_alerts_for_current_state(
+                s=session, now=_utcnow(), free_limit_gb=5, cycle_days=30, stale_after_seconds=900,
+            )
+            support = [row for row in rows if row["source"] == "support_bundle"]
+            assert len(support) == 2
+            assert {row["status"] for row in support} == {expected}
+            assert len([row for row in notifications if row["fingerprint"].startswith("support_bundle_health_")]) == 2
+            session.commit()
+        failures.update(ingest=0, retention=0)
+
+
 def test_provider_quota_cycle_bounds_handles_short_month_reset(monkeypatch, tmp_path) -> None:
     _load_api(monkeypatch, tmp_path)
     from admin_ops_service import provider_quota_cycle_bounds
