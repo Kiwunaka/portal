@@ -60,14 +60,40 @@ candidate hashes and pinned dependency lock.
 
 ## Deployment state
 
-NOT_DEPLOYED at this checkpoint. Guarded `deploy.py --candidate <candidate>`
-preflight returned PLAN_PASS, including baseline/stage digests, Node/package
-versions, unchanged support environment, both running services and HTTPS health.
+PASS — deployed on Brain on 2026-09-10. PR #272 was squash-merged as
+`cd553a1493d1c4d5af2449ea11998a3f1c99589a`. `source-acceptance.json` records the
+verified signed source, identical accepted tree and exact candidate runtime
+payload match. Both required CI checks passed; `release-base-isolation` was
+skipped by its workflow condition, as retained in `ci.json`.
+
+Guarded preflight returned PLAN_PASS. The exact apply command was
+`ssh pokrov-brain '/root/portal_bot/venv/bin/python /tmp/pokrov-support-pi/deploy.py --candidate ee400086db05b8d41a9278296ff6e69f4595300b --apply'`.
+It returned PASS and retained rollback files in
+`/root/portal_bot.deploy-backups/manual-support-pi-ee400086db05`.
+`deploy-receipt.json` records the cutover and new API/helpbot process identities.
 `prerequisites.json` records the official Node archive SHA-256 and isolated npm
-lock install. Node/dependencies were prepared additively without changing the
-running services. The apply path backs up scoped files/environment, retains new
-file provenance, switches only the two dependency/runtime links, restarts only
-API/helpbot, and restores the previous state on failure.
+lock install. Only scoped support files, environment and two runtime/dependency
+links were changed; only API/helpbot were restarted.
+
+`ssh pokrov-brain '/root/portal_bot/venv/bin/python /tmp/pokrov-support-pi/readback.py'`
+returned PASS: all twelve deployed file hashes match, both services are active
+with zero automatic restarts, both loaded DeepSeek 4.1 high and the pi Node path,
+Node is v24.15.0, pi packages are 0.85.1, the installed lock matches and public
+HTTPS health returns 200. Sanitized results are in `readback.json`.
+
+The postdeploy command
+`ssh pokrov-brain 'SUPPORT_CANDIDATE_ROOT=/root/portal_bot SUPPORT_PI_NODE=/opt/pokrov-support-node/bin/node /root/portal_bot/venv/bin/python /tmp/pokrov-support-pi/smoke.py > /tmp/pokrov-support-pi/postdeploy.jsonl'`
+passed all three scenarios against exact deployed source with an isolated
+temporary database. `postdeploy.jsonl` retains tool traces and replies: paid
+inactive account 9.2s, PNG/PDF case 17.7s, no-order case 11.4s. Actual pi calls,
+attachment reads, staged notes and operator queueing all passed without claimed
+refund/access mutations. This is Brain-origin synthetic evidence, not a real
+customer end-to-end conversation.
+
+After retaining deployment evidence,
+`python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q`
+passed 33 tests; `git diff --check` passed. Deployment receipts contain public
+configuration and synthetic case data only.
 
 Independent review: NOT_REQUESTED. Real customer conversations and RU-origin
 delivery: NOT_REQUESTED. Stored node snapshots are not live connectivity proof.

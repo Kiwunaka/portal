@@ -1,0 +1,37 @@
+{
+  "candidate": "ee400086db05b8d41a9278296ff6e69f4595300b",
+  "origin": "brain-origin",
+  "status": "PASS",
+  "files_match": true,
+  "services": {
+    "portal-api": {
+      "MainPID": "233237",
+      "NRestarts": "0",
+      "ActiveState": "active",
+      "support": {
+        "SUPPORT_AI_MODEL": "deepseek/deepseek-v4.1-flash",
+        "SUPPORT_AI_REASONING_EFFORT": "high",
+        "SUPPORT_AI_AGENT_ENABLED": "true",
+        "SUPPORT_PI_NODE": "/opt/pokrov-support-node/bin/node"
+      }
+    },
+    "portal-helpbot": {
+      "MainPID": "233240",
+      "NRestarts": "0",
+      "ActiveState": "active",
+      "support": {
+        "SUPPORT_AI_MODEL": "deepseek/deepseek-v4.1-flash",
+        "SUPPORT_AI_REASONING_EFFORT": "high",
+        "SUPPORT_AI_AGENT_ENABLED": "true",
+        "SUPPORT_PI_NODE": "/opt/pokrov-support-node/bin/node"
+      }
+    }
+  },
+  "node": "v24.15.0",
+  "packages": {
+    "pi-agent-core": "0.85.1",
+    "pi-ai": "0.85.1"
+  },
+  "lock_sha256": "065b9874a9e04d6b63575dd0096da119cadf4db3eead463123d49be0769f9aba",
+  "public_health": "PASS"
+}

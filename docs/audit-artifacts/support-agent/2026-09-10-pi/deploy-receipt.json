@@ -1,0 +1,49 @@
+{
+  "candidate": "ee400086db05b8d41a9278296ff6e69f4595300b",
+  "status": "PASS",
+  "origin": "brain-origin",
+  "services_before": {
+    "portal-api": {
+      "MainPID": "222340",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "222343",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    }
+  },
+  "files": [
+    "api.py",
+    "helpbot.py",
+    "support_agent_harness.py",
+    "support_agent_service.py",
+    "support_case_context.py",
+    "support_case_tools.py",
+    "support_pi_bridge.py",
+    "support_work_service.py",
+    "tickets_repo.py",
+    "support_pi/runner.mjs",
+    "support_pi/package.json",
+    "support_pi/package-lock.json"
+  ],
+  "node": "v24.15.0",
+  "pi": "0.85.1",
+  "lock_sha256": "065b9874a9e04d6b63575dd0096da119cadf4db3eead463123d49be0769f9aba",
+  "database_mutated": false,
+  "services_after": {
+    "portal-api": {
+      "MainPID": "233237",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "233240",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    }
+  },
+  "backup": "/root/portal_bot.deploy-backups/manual-support-pi-ee400086db05",
+  "health": "PASS"
+}
