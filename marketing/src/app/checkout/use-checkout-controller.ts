@@ -777,7 +777,7 @@ export function useCheckoutController() {
   const activePlanMonthly = activePlanMonths > 0 ? Math.round(activePlanTotal / activePlanMonths) : 0;
   const offerMessage = promoCode && offerPreview && !offerPreview.valid
     ? OFFER_REASON_TEXT[offerPreview.reason_code] || "Промокод сейчас недоступен."
-    : promoCode && offerPreview?.valid
+    : promoCode && previewMatchesPlan
       ? OFFER_REASON_TEXT.ready
       : "";
 
