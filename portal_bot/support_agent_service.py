@@ -11,6 +11,7 @@ from typing import Any, Awaitable, Callable, Mapping
 
 from support_ai_service import (
     DEFAULT_API_BASE_URL,
+    DEEPSEEK_41_MODEL,
     SUPPORTED_MODELS,
     SupportAIConfig,
     canonical_support_model,
@@ -90,7 +91,6 @@ class SupportAgentRuntimeSettings:
     max_rate_buckets: int
     pre_retrieval_limit: int
     max_input_chars: int
-    max_output_tokens: int
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "SupportAgentRuntimeSettings":
@@ -164,7 +164,6 @@ class SupportAgentRuntimeSettings:
             max_rate_buckets=integer("SUPPORT_AI_MAX_RATE_BUCKETS", 1024, 1, 1024),
             pre_retrieval_limit=integer("SUPPORT_AI_PRE_RETRIEVAL_LIMIT", 3, 1, 3),
             max_input_chars=integer("SUPPORT_AI_MAX_INPUT_CHARS", 30000, 1000, 30000),
-            max_output_tokens=integer("SUPPORT_AI_MAX_OUTPUT_TOKENS", 1200, 1, 1200),
         )
         if errors:
             return replace(settings, valid=False, invalid_reason=sorted(errors)[0])
@@ -238,7 +237,6 @@ def _default_harness_factory(
             provider_timeout_ceiling(config.api_base_url),
         ),
         max_context_chars=min(config.max_context_chars, settings.max_input_chars),
-        max_output_tokens=min(config.max_output_tokens, settings.max_output_tokens),
     )
     return SupportAgentHarness(
         policy=policy,
@@ -362,7 +360,8 @@ class SupportAgentService:
         if (
             not is_exact_openrouter_route(self.config.api_base_url)
             or canonical_support_model(self.config.model) not in SUPPORTED_MODELS
-            or self.config.reasoning_effort != "medium"
+            or self.config.reasoning_effort != (
+                "high" if canonical_support_model(self.config.model) == DEEPSEEK_41_MODEL else "medium")
         ):
             logger.warning("support agent disabled code=agent_profile_invalid")
             return self._local_result(message, scope.client_session_id)
@@ -386,7 +385,7 @@ class SupportAgentService:
                 marker in text for marker in ("err_", "не работает", "не откры", "оплат", "ключ")
             )
             return SupportReplyResult(
-                reply=str(reply)[:1200],
+                reply=str(reply)[:self.config.max_answer_chars],
                 assistant_session_id=scope.client_session_id,
                 suggested_actions=_legacy_actions(message),
                 should_escalate=should_escalate,
