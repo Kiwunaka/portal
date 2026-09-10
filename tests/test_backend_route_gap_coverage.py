@@ -586,6 +586,28 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
             target_id=str(campaign_id),
             payload=update_payload,
         )
+        from models import Node
+
+        with self.api.SessionLocal() as session:
+            session.add(Node(
+                code="quality-test", access_role="paid", last_health_at=self.api._utcnow(),
+                cpu_percent=20, network_tx_mbps_1m=10, packet_loss_percent=0,
+            ))
+            session.commit()
+        changed_quality = self.client.patch(
+            f"/api/admin/campaigns/{campaign_id}", headers=update_headers, json=update_payload
+        )
+        self.assertEqual(changed_quality.status_code, 409, changed_quality.text)
+        self.assertEqual(changed_quality.json()["detail"]["code"], "stale_intent")
+        update_headers = self._prepare_admin_action(
+            action="campaign.update", target_type="campaign",
+            target_id=str(campaign_id), payload=update_payload,
+        )
+        with self.api.SessionLocal() as session:
+            node = session.query(Node).filter(Node.code == "quality-test").one()
+            node.cpu_percent = 21
+            node.last_health_at = self.api._utcnow()
+            session.commit()
         patched = self.client.patch(
             f"/api/admin/campaigns/{campaign_id}", headers=update_headers, json=update_payload
         )

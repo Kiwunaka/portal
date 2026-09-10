@@ -138,6 +138,17 @@ counts as entitlement truth. Transition evidence is the bounded `AdminAudit`
 chain `capacity.auto_pause|auto_hold|auto_resume`; a dashboard read performs no
 mutation.
 
+The separate `capacity_automation.quality` readback includes per-paid-node
+CPU/Mbps/loss, missing metrics, connection hints and production support counts.
+`forecast.expansion_reasons` raises `node_warm` at the existing node-policy soft
+thresholds and `entitlement_headroom` from the yellow band, before the stop
+threshold. A drain/rejected node, missing telemetry, open high/critical support
+ticket or overdue actionable ticket blocks new campaign traffic. Recovery
+requires healthy nodes, cleared support pressure and entitlement hysteresis.
+Customer-waiting overdue tickets remain visible but do not count as actionable.
+Concurrent devices are explicitly unmeasured; connections and active
+entitlement accounts are not estimates of people.
+
 ## Transport Rollout Visibility
 
 User360 and support attempts include bounded connectivity self-reports when the

@@ -22,6 +22,27 @@ truth intentionally remains `state=draft_blocked`, legal launch false and
 holdout percentage null. Editing a generated file, database row or frontend
 payload cannot change those gates.
 
+## Capacity and quality guard
+
+The planning figures of 5,000 RUB/month and 300 active entitlement accounts are
+owner inputs, not measured throughput or a spending authorization. The commercial
+contract continues to own the 300-unit ceiling and 70% pause / strictly below
+65% resume thresholds. Pending reservations are forecast only.
+
+`commercial-capacity-owner-policy-v2` additionally uses existing paid-node
+capacity policies and the production support queue. Warm CPU/throughput is an
+expansion signal; drain, hard rejection or missing CPU/Mbps/loss telemetry stops
+new campaign traffic. Resume requires healthy eligible paid nodes and cleared
+support pressure as well as entitlement hysteresis. Open high/critical tickets
+and overdue tickets not waiting on the customer stop acquisition and winback.
+Renewal and recovery retain their exemptions. These gates apply to offers,
+order binding, promo delivery and campaign activation immediately; the worker
+records audited pause/hold/resume transitions.
+
+The readback separates active entitlement accounts, per-node Mbps/CPU/loss,
+connection hints and support counts. Concurrent devices remain `not_measured`;
+IP addresses and panel mappings are not used to infer devices or people.
+
 ## Legal and seller review boundary
 
 The effective date of part 10.8 of article 5 of the Russian Advertising Law

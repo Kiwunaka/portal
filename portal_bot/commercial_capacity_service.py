@@ -22,6 +22,7 @@ from commercial_campaign_policy import (
     evaluate_campaign_policy,
 )
 from commercial_contract import get_commercial_contract
+from commercial_capacity_quality import commercial_quality_snapshot
 from models import (
     AdminAudit,
     CommercialOffer,
@@ -31,7 +32,7 @@ from models import (
 
 
 COMMERCIAL_CAPACITY_AUTOMATION_SCHEMA = "pokrov-commercial-capacity-automation-v1"
-COMMERCIAL_CAPACITY_POLICY_ID = "commercial-capacity-owner-policy-v1"
+COMMERCIAL_CAPACITY_POLICY_ID = "commercial-capacity-owner-policy-v2"
 AUTO_MANAGED_OBJECTIVES = frozenset({"acquisition", "winback"})
 CAPACITY_PAUSE_REASONS = frozenset(
     {"capacity_forbidden", "capacity_resume_hysteresis"}
@@ -138,6 +139,7 @@ def commercial_capacity_readback(
         active_units=resolved_units,
         contract=commercial,
     )
+    quality = commercial_quality_snapshot(session, now=current)
     reservations = _reservation_forecast(session, now=current, contract=commercial)
     pending_units = int(reservations["pending_capacity_units"])
     projected_units = resolved_units + pending_units
@@ -200,6 +202,7 @@ def commercial_capacity_readback(
     gate_reasons: list[str] = []
     if not capacity.acquisition_permitted:
         gate_reasons.append("capacity_forbidden")
+    gate_reasons.extend(quality["blocking_reasons"])
     if projected_ratio >= capacity.pause_at_ratio:
         gate_reasons.append("pending_reservations_cross_pause_threshold")
 
@@ -214,6 +217,7 @@ def commercial_capacity_readback(
             getattr(last_transition, "created_at", None) if last_transition else None
         ),
         "capacity": capacity.as_dict(),
+        "quality": quality,
         "forecast": {
             "authority": capacity.authority,
             "active_units": resolved_units,
@@ -224,6 +228,9 @@ def commercial_capacity_readback(
             "pause_threshold_units": pause_threshold_units,
             "resume_below_units": max(0, resume_below_units),
             "gate_reasons": gate_reasons,
+            "expansion_reasons": quality["expansion_reasons"] + (
+                ["entitlement_headroom"] if capacity.band != "green" else []
+            ),
         },
         "reservation_counts": dict(reservations["reservation_counts"]),
         "campaign_lifecycle_counts": dict(sorted(lifecycle_counts.items())),
@@ -235,6 +242,7 @@ def _transition_for_campaign(
     row: IncentiveCampaign,
     *,
     active_units: int,
+    quality: Mapping[str, Any],
     contract: Mapping[str, Any],
     now: datetime,
 ) -> tuple[str | None, str, dict[str, Any]]:
@@ -245,7 +253,8 @@ def _transition_for_campaign(
 
     if objective not in AUTO_MANAGED_OBJECTIVES or not bool(row.capacity_guard_enabled):
         return None, state_reason or "legacy_unclassified", {}
-    if lifecycle == "live" and not capacity.acquisition_permitted:
+    forbidden = not capacity.acquisition_permitted or not quality["acquisition_permitted"]
+    if lifecycle == "live" and forbidden:
         return "pause", "capacity_forbidden", {
             "activation_allowed": False,
             "blocking_reasons": ["capacity_forbidden"],
@@ -253,13 +262,13 @@ def _transition_for_campaign(
     if lifecycle != "paused" or state_reason not in CAPACITY_PAUSE_REASONS:
         return None, state_reason or "legacy_unclassified", {}
 
-    if capacity.ratio is None or capacity.ratio >= capacity.pause_at_ratio:
+    if forbidden:
         action = "hold" if state_reason != "capacity_forbidden" else None
         return action, "capacity_forbidden", {
             "activation_allowed": False,
             "blocking_reasons": ["capacity_forbidden"],
         }
-    if capacity.ratio >= capacity.resume_below_ratio:
+    if capacity.ratio >= capacity.resume_below_ratio or not quality["resume_permitted"]:
         return "hold" if state_reason != "capacity_resume_hysteresis" else None, "capacity_resume_hysteresis", {
             "activation_allowed": False,
             "blocking_reasons": ["capacity_resume_hysteresis"],
@@ -271,6 +280,7 @@ def _transition_for_campaign(
     decision = evaluate_campaign_policy(
         candidate,
         active_units=active_units,
+        quality=quality,
         contract=contract,
         now=now,
         resuming_from_capacity_pause=True,
@@ -300,6 +310,7 @@ def run_commercial_capacity_evaluation(
         else max(0, int(active_units))
     )
     capacity = capacity_snapshot(active_units=resolved_units, contract=commercial)
+    quality = commercial_quality_snapshot(session, now=current)
     query = session.query(IncentiveCampaign).filter(
         IncentiveCampaign.objective.in_(sorted(AUTO_MANAGED_OBJECTIVES)),
         IncentiveCampaign.lifecycle_status.in_(["live", "paused"]),
@@ -313,6 +324,7 @@ def run_commercial_capacity_evaluation(
         action, next_reason, decision = _transition_for_campaign(
             row,
             active_units=resolved_units,
+            quality=quality,
             contract=commercial,
             now=current,
         )
@@ -379,6 +391,8 @@ def run_commercial_capacity_evaluation(
                         "active_units": resolved_units,
                         "limit_units": capacity.limit_units,
                         "band": capacity.band,
+                        "quality_blocking_reasons": quality["blocking_reasons"],
+                        "quality_expansion_reasons": quality["expansion_reasons"],
                         "before": before,
                         "after": after,
                     },
@@ -414,6 +428,7 @@ def run_commercial_capacity_evaluation(
         "contract_sha256": str(commercial.get("contract_sha256") or ""),
         "evaluated_at": current.isoformat(),
         "capacity": capacity.as_dict(),
+        "quality": quality,
         "transition_count": len(transitions),
         "transitions": transitions,
         "renewal_recovery_exempt": True,

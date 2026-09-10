@@ -17,6 +17,7 @@ from sqlalchemy import func
 
 try:
     from .acquisition_service import acquisition_snapshot, handoff_token_hash
+    from .commercial_capacity_quality import commercial_quality_snapshot
     from .commercial_campaign_policy import (
         active_entitlement_capacity_units,
         campaign_record,
@@ -45,6 +46,7 @@ try:
     )
 except ImportError:
     from acquisition_service import acquisition_snapshot, handoff_token_hash
+    from commercial_capacity_quality import commercial_quality_snapshot
     from commercial_campaign_policy import (
         active_entitlement_capacity_units,
         campaign_record,
@@ -546,6 +548,7 @@ def bind_commercial_offer_to_order(
     decision = evaluate_campaign_policy(
         campaign,
         active_units=active_units,
+        quality=commercial_quality_snapshot(session, now=current),
         contract=commercial,
         now=current,
     )

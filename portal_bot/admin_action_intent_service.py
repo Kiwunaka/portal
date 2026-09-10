@@ -62,6 +62,7 @@ from node_policy import (
 )
 from nodes_repo import enabled_nodes
 from ru_probe_contract import canonical_json_bytes
+from commercial_capacity_quality import commercial_quality_snapshot
 from commercial_campaign_policy import (
     CAMPAIGN_CHANNELS,
     CAMPAIGN_LEGAL_PROFILE_STATUSES,
@@ -4752,7 +4753,8 @@ def _campaign_state(
         public_id = str(row.public_id or "")
         next_revision = current_revision if mode == "delete" else current_revision + 1
     active_units = active_entitlement_capacity_units(session)
-    authority = campaign_policy_authority_snapshot(active_units=active_units)
+    quality = commercial_quality_snapshot(session)
+    authority = campaign_policy_authority_snapshot(active_units=active_units, quality=quality)
     runtime_record = _campaign_runtime_record(
         row=row,
         payload=payload,
@@ -4772,6 +4774,7 @@ def _campaign_state(
     decision = evaluate_campaign_policy(
         runtime_record,
         active_units=active_units,
+        quality=quality,
         resuming_from_capacity_pause=resuming_from_capacity_pause,
     )
     safe_runtime = _safe_campaign_payload(runtime_record)

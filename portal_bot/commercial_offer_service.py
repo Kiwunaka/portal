@@ -14,6 +14,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from acquisition_service import handoff_token_hash
+from commercial_capacity_quality import commercial_quality_snapshot
 from commercial_campaign_policy import (
     active_entitlement_capacity_units,
     campaign_record,
@@ -674,6 +675,7 @@ def preview_commercial_offer(
     campaign_policy = evaluate_campaign_policy(
         campaign,
         active_units=active_units,
+        quality=commercial_quality_snapshot(session, now=current),
         contract=commercial,
         now=current,
     )

@@ -2688,7 +2688,16 @@ export async function installAdminApiMock(
     }
 
     if (url.pathname === "/api/admin/campaigns") {
-      await fulfillJson(route, { commercial_revision: "commercial-fixture", contract_sha256: "c".repeat(64), campaigns: options.winbackScenario ? [{
+      await fulfillJson(route, { commercial_revision: "commercial-fixture", contract_sha256: "c".repeat(64),
+        capacity_automation: {
+          capacity: { active_units: 950, limit_units: 1000 }, forecast: { expansion_reasons: ["entitlement_headroom"] },
+          quality: {
+            acquisition_permitted: false, resume_permitted: false, blocking_reasons: ["support_pressure"],
+            online_connections_hint: 37, concurrent_devices: null,
+            support: { open_tickets: 5, high_priority_open_tickets: 1, overdue_actionable_tickets: 2 },
+            nodes: [{ code: "de", state: "healthy", cpu_percent: 20, tx_mbps: 15, packet_loss_percent: 0 }],
+          },
+        }, campaigns: options.winbackScenario ? [{
         id: 51, public_id: "winback-fixture", name: "Возврат", objective: "winback", lifecycle_status: "paused", revision: 3,
         commercial_revision: "commercial-fixture", channels: ["cabinet"], paid_cap: 20, paid_conversions_count: 4,
         state_reason: "capacity_forbidden", starts_at: generatedAt, ends_at: null,

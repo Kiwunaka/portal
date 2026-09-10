@@ -23,6 +23,14 @@ const RECOMMENDATION_LABELS: Record<string, string> = {
   owner_review_scale_50: "Владелец решает масштаб до 50",
 };
 
+const CAPACITY_REASON_LABELS: Record<string, string> = {
+  node_quality_unavailable: "Нет полных свежих метрик узлов",
+  node_quality_pressure: "Узлы перегружены или недоступны",
+  support_pressure: "Поддержка: срочные обращения или просроченный ответ",
+  node_warm: "Узлы достигли мягкого порога — нужна дополнительная мощность",
+  entitlement_headroom: "Запас по активным правам доступа сокращается",
+};
+
 function recommendationTone(value: string): Tone {
   if (value === "stop" || value === "disable") return "danger";
   if (value === "owner_review_scale_50" || value === "keep") return "success";
@@ -64,6 +72,8 @@ export function WinbackPilotDecisionPanel() {
   const guardrails = pack?.guardrails;
   const primary = pack?.primary_metric;
   const quota = guardrails?.quota;
+  const capacity = campaigns.data?.capacity_automation;
+  const quality = capacity?.quality;
 
   function reload() {
     campaigns.reload();
@@ -94,6 +104,20 @@ export function WinbackPilotDecisionPanel() {
             {winbackCampaigns.map((row) => <option key={row.id} value={row.id}>{campaignLabel(row)}</option>)}
           </select>
         </label>
+      ) : null}
+
+      {capacity && quality ? (
+        <section aria-label="Ограничитель роста" className="mb-4 space-y-2 rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] p-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold">Ограничитель роста</h3>
+            <Badge tone={quality.acquisition_permitted ? "success" : "danger"}>{quality.acquisition_permitted ? "Качество допускает рост" : "Рост остановлен"}</Badge>
+          </div>
+          <p>Активные права: {formatNumber(capacity.capacity.active_units)} / {capacity.capacity.limit_units} · Соединения по данным узлов: {formatNumber(quality.online_connections_hint)} · Одновременные устройства: {quality.concurrent_devices === null ? "не измерены" : formatNumber(quality.concurrent_devices)}</p>
+          <p>Поддержка: {quality.support.open_tickets} открытых · {quality.support.high_priority_open_tickets} срочных · {quality.support.overdue_actionable_tickets} просроченных ответов</p>
+          {quality.nodes.map((node) => <p key={node.code} className="font-mono">{node.code}: {node.state} · CPU {formatNumber(node.cpu_percent)}% · {formatNumber(node.tx_mbps)} Мбит/с · потери {formatNumber(node.packet_loss_percent)}%</p>)}
+          {[...quality.blocking_reasons, ...capacity.forecast.expansion_reasons].map((reason) => <p key={reason}>{CAPACITY_REASON_LABELS[reason] || reason}</p>)}
+          {!quality.resume_permitted && quality.acquisition_permitted ? <p>Возобновление ждёт возврата узлов ниже мягких порогов.</p> : null}
+        </section>
       ) : null}
 
       <RouteBoundary

@@ -270,6 +270,7 @@ def evaluate_campaign_policy(
     row: object | Mapping[str, Any],
     *,
     active_units: int | None,
+    quality: Mapping[str, Any] | None = None,
     contract: Mapping[str, Any] | None = None,
     now: datetime | None = None,
     resuming_from_capacity_pause: bool = False,
@@ -345,6 +346,10 @@ def evaluate_campaign_policy(
             capacity.ratio is None or capacity.ratio >= capacity.resume_below_ratio
         ):
             reasons.append("capacity_resume_hysteresis")
+        if not quality or not quality["acquisition_permitted"]:
+            reasons.append("capacity_forbidden")
+        elif resuming_from_capacity_pause and not quality["resume_permitted"]:
+            reasons.append("capacity_resume_hysteresis")
 
     reasons.extend(_time_gate_reasons(record, now=current))
     reasons.extend(evaluate_campaign_pilot_binding(row))
@@ -372,6 +377,8 @@ def evaluate_campaign_policy(
         "contract_sha256": str(commercial.get("contract_sha256") or ""),
         "capacity_exempt": objective in CAPACITY_EXEMPT_OBJECTIVES,
         "capacity": capacity.as_dict(),
+        "quality_blocking_reasons": list(quality["blocking_reasons"])
+        if quality else ["node_quality_unavailable"],
         "evaluated_at": current.isoformat(),
     }
 
@@ -379,6 +386,7 @@ def evaluate_campaign_policy(
 def campaign_policy_authority_snapshot(
     *,
     active_units: int | None,
+    quality: Mapping[str, Any],
     contract: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     commercial = dict(contract or get_commercial_contract())
@@ -398,6 +406,11 @@ def campaign_policy_authority_snapshot(
             active_units=active_units,
             contract=commercial,
         ).as_dict(),
+        "quality_gate": {
+            key: quality[key] for key in (
+                "acquisition_permitted", "resume_permitted", "blocking_reasons",
+            )
+        },
     }
 
 
@@ -421,6 +434,7 @@ def campaign_admin_readback(
     row: object,
     *,
     active_units: int,
+    quality: Mapping[str, Any],
 ) -> dict[str, Any]:
     return {
         "id": int(getattr(row, "id")),
@@ -443,7 +457,7 @@ def campaign_admin_readback(
         "state_reason": str(
             getattr(row, "state_reason", "legacy_unclassified") or "legacy_unclassified"
         ),
-        "policy": evaluate_campaign_policy(row, active_units=active_units),
+        "policy": evaluate_campaign_policy(row, active_units=active_units, quality=quality),
         "segment": str(getattr(row, "segment", "") or ""),
         "starts_at": _safe_iso(getattr(row, "starts_at", None)),
         "ends_at": _safe_iso(getattr(row, "ends_at", None)),

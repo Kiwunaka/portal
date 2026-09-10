@@ -38,6 +38,7 @@ from models import (  # noqa: E402
     EntitlementGrant,
     ExternalOrder,
     IncentiveCampaign,
+    Node,
     PromoCode,
 )
 
@@ -84,6 +85,11 @@ def db():
     engine = create_engine("sqlite:///:memory:", future=True)
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine, future=True, expire_on_commit=False)()
+    session.add(Node(
+        code="test-paid", access_role="paid", last_health_at=NOW.replace(tzinfo=None),
+        cpu_percent=20, network_tx_mbps_1m=10, packet_loss_percent=0,
+    ))
+    session.flush()
     try:
         yield session
     finally:
@@ -313,6 +319,12 @@ def test_bind_persists_exact_lineage_and_exact_retry_reuses_order(db) -> None:
 def test_binding_revalidates_price_revision_legal_and_expiry(db) -> None:
     seeded = _seed(db)
     preview = _preview(db, seeded)
+    node = db.query(Node).one()
+    node.packet_loss_percent = 3
+    db.commit()
+    with pytest.raises(order_service.CommercialOrderBindingError, match="commercial_campaign_blocked"):
+        _bind(db, preview["offer_token"], tg_id=seeded["tg_id"])
+    node.packet_loss_percent = 0
     seeded["offer"].final_amount_rub = 601
     db.commit()
     with pytest.raises(order_service.CommercialOrderBindingError, match="commercial_price_stale"):
