@@ -29,6 +29,7 @@ from models import (  # noqa: E402
     CommercialCreative,
     CommercialOffer,
     IncentiveCampaign,
+    Node,
 )
 
 
@@ -39,7 +40,13 @@ SECRET = "commercial-promo-surface-secret-at-least-32-bytes"
 def _session():
     engine = create_engine("sqlite:///:memory:", future=True)
     Base.metadata.create_all(engine)
-    return engine, sessionmaker(bind=engine, future=True)()
+    session = sessionmaker(bind=engine, future=True)()
+    session.add(Node(
+        code="test-paid", access_role="paid", last_health_at=NOW.replace(tzinfo=None),
+        cpu_percent=20, network_tx_mbps_1m=10, packet_loss_percent=0,
+    ))
+    session.flush()
+    return engine, session
 
 
 def _approved_pilot() -> dict:

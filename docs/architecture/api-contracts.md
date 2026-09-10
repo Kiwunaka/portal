@@ -109,7 +109,7 @@ passes. Renewal and recovery are capacity-exempt. Owner-paused, ended or killed
 campaigns are never auto-resumed.
 
 Every pause/hold/resume increments campaign revision and stores one bounded
-`AdminAudit` record under `commercial-capacity-owner-policy-v1`; a failed
+`AdminAudit` record under `commercial-capacity-owner-policy-v2`; a failed
 transaction changes neither campaign nor audit. `GET /api/admin/campaigns`
 remains read-only and adds `pokrov-commercial-capacity-automation-v1` readback:
 exact contract revision/SHA, active limit/ratio/band, pause and strict resume
@@ -117,6 +117,22 @@ unit thresholds, pending-reservation forecast, gate reasons, lifecycle totals,
 per-campaign paid cap/count and reservation counts, and last evaluation/
 transition time. A pending-reservation forecast is conservative planning data,
 not entitlement or acquisition authority.
+
+The additive `capacity_automation.quality` snapshot keeps paid-node CPU, Mbps,
+packet loss, connection hints and production support pressure separate from
+entitlement units. Unknown telemetry or a paid node in `drain`/`hard_reject`
+blocks acquisition/winback; `warm` raises an expansion signal and prevents
+automatic resume. Resume requires every eligible paid node to be healthy as
+well as the existing strict-below-65% entitlement threshold. Open high/critical
+tickets or overdue tickets awaiting operator/engineering/provider action also
+block growth. Renewal/recovery remain exempt. Offer, order, promo and campaign
+activation checks read the same current quality gate, without waiting for the
+worker. An absent quality snapshot cannot authorize acquisition.
+
+`concurrent_devices` remains null with `not_measured`; summed
+`online_connections_hint` is neither devices nor people. Admin action previews
+bind quality gate decisions, not changing metric timestamps, so a changed gate
+requires a fresh preview. Worker audits retain the quality reasons.
 
 The repository commercial manifest currently declares legal launch blocked and
 no allowed launch channels. Therefore local previews/readback must remain

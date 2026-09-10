@@ -8,6 +8,7 @@ from typing import Any, Mapping
 from sqlalchemy import or_
 
 from commercial_attribution_service import commercial_attribution_read_model
+from commercial_capacity_quality import commercial_quality_snapshot
 from commercial_campaign_policy import (
     active_entitlement_capacity_units,
     evaluate_campaign_policy,
@@ -146,7 +147,10 @@ def winback_guardrail_read_model(
         active_units = active_entitlement_capacity_units(session, now=current)
     except Exception:
         active_units = None
-    policy = evaluate_campaign_policy(campaign, active_units=active_units, now=current)
+    policy = evaluate_campaign_policy(
+        campaign, active_units=active_units, now=current,
+        quality=commercial_quality_snapshot(session, now=current),
+    )
     return {
         "schema": "pokrov-winback-guardrails-v1",
         "period": {"from": _safe_iso(from_dt), "to": _safe_iso(to_dt)},

@@ -252,6 +252,11 @@ test("Кампании: юридические условия и ёмкость 
   await expect(policy).toContainText("Привлечение по ёмкости: приостановлено");
   await expect(policy).toContainText("legal_launch_blocked");
   await expect(page.getByText("4 / 20", { exact: true })).toBeVisible();
+  const growth = page.getByRole("region", { name: "Ограничитель роста" });
+  await expect(growth).toContainText("Соединения по данным узлов: 37 · Одновременные устройства: не измерены");
+  await expect(growth).toContainText("Поддержка: 5 открытых · 1 срочных · 2 просроченных ответов");
+  await expect(growth).toContainText("CPU 20% · 15 Мбит/с · потери 0%");
+  await expect(growth).toContainText("Рост остановлен");
   expect(api.calls.filter((call) => call.method === "POST")).toHaveLength(0);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

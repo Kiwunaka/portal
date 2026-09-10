@@ -2951,7 +2951,8 @@ async def admin_campaigns_get(x_telegram_init_data: str = Header(default=""), li
             (capacity_automation.get("capacity") or {}).get("active_units") or 0
         )
         authority = campaign_policy_authority_snapshot(
-            active_units=active_capacity_units
+            active_units=active_capacity_units,
+            quality=capacity_automation["quality"],
         )
         return {
             "commercial_revision": str(authority["commercial_revision"]),
@@ -2959,7 +2960,9 @@ async def admin_campaigns_get(x_telegram_init_data: str = Header(default=""), li
             "capacity": dict(authority["capacity"]),
             "capacity_automation": capacity_automation,
             "campaigns": [
-                campaign_admin_readback(r, active_units=active_capacity_units)
+                campaign_admin_readback(
+                    r, active_units=active_capacity_units, quality=capacity_automation["quality"],
+                )
                 for r in rows
             ]
         }

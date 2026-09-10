@@ -31,6 +31,7 @@ import qrcode
 from sqlalchemy.exc import IntegrityError
 from bot_texts import bot_text
 from commercial_contract import commercial_plan_map, commercial_revision
+from commercial_capacity_quality import commercial_quality_snapshot
 from commercial_campaign_policy import (
     active_entitlement_capacity_units,
     evaluate_campaign_policy,
@@ -2043,10 +2044,12 @@ def _campaign_lookup(*, session, campaign_type: str, target_value: str, user: Us
         .all()
     )
     active_capacity_units = active_entitlement_capacity_units(session, now=now_dt)
+    quality = commercial_quality_snapshot(session, now=now_dt)
     for row in rows:
         policy = evaluate_campaign_policy(
             row,
             active_units=active_capacity_units,
+            quality=quality,
             now=now_dt,
         )
         if not bool(policy.get("activation_allowed")):

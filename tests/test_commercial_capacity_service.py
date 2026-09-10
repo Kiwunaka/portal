@@ -21,6 +21,8 @@ from commercial_capacity_service import (  # noqa: E402
     run_commercial_capacity_evaluation,
 )
 from commercial_contract import get_commercial_contract  # noqa: E402
+from commercial_capacity_quality import commercial_quality_snapshot  # noqa: E402
+from commercial_campaign_policy import evaluate_campaign_policy  # noqa: E402
 from models import (  # noqa: E402
     AdminAudit,
     Base,
@@ -29,6 +31,9 @@ from models import (  # noqa: E402
     CommercialOffer,
     CommercialReservation,
     IncentiveCampaign,
+    Node,
+    NodeCapacityPolicy,
+    SupportTicket,
 )
 
 
@@ -82,7 +87,107 @@ def _campaign(contract: dict, *, suffix: str, objective: str = "acquisition") ->
 def _session():
     engine = create_engine("sqlite:///:memory:", future=True)
     Base.metadata.create_all(engine)
-    return engine, sessionmaker(bind=engine, future=True)()
+    session = sessionmaker(bind=engine, future=True)()
+    session.add(Node(
+        code="test-paid", access_role="paid", enabled=True, is_healthy=True,
+        last_health_at=NOW.replace(tzinfo=None), cpu_percent=20,
+        network_tx_mbps_1m=10, packet_loss_percent=0, online_connections_hint=37,
+    ))
+    session.flush()
+    return engine, session
+
+
+def test_quality_pauses_before_unit_limit_and_requires_healthy_resume() -> None:
+    engine, session = _session()
+    try:
+        contract = _ready_contract()
+        campaign = _campaign(contract, suffix="a")
+        session.add(campaign)
+        session.flush()
+        node = session.query(Node).one()
+        session.add_all([
+            Node(code="test-lab", access_role="operator_lab"),
+            NodeCapacityPolicy(node_code=node.code, is_enabled=False, allow_premium_pool=False),
+        ])
+        session.flush()
+        node.cpu_percent = 76
+        warm = commercial_capacity_readback(session, now=NOW, contract=contract, active_units=10)
+        assert warm["forecast"]["expansion_reasons"] == ["node_warm"]
+        assert warm["quality"]["acquisition_permitted"] is True
+        assert warm["quality"]["online_connections_hint"] == 37
+        assert warm["quality"]["concurrent_devices"] is None
+        assert [item["code"] for item in warm["quality"]["nodes"]] == ["test-paid"]
+
+        node.packet_loss_percent = 3
+        quality = commercial_quality_snapshot(session, now=NOW)
+        assert evaluate_campaign_policy(
+            campaign, active_units=10, quality=quality, contract=contract, now=NOW,
+        )["activation_allowed"] is False
+        assert campaign.lifecycle_status == "live"  # request gate precedes the worker
+        paused = run_commercial_capacity_evaluation(
+            session, now=NOW, contract=contract, active_units=10, apply=True,
+        )
+        assert paused["transitions"][0]["action"] == "pause"
+        assert paused["quality"]["blocking_reasons"] == ["node_quality_pressure"]
+        node.packet_loss_percent = 0
+        held = run_commercial_capacity_evaluation(
+            session, now=NOW, contract=contract, active_units=10, apply=True,
+        )
+        assert held["transitions"][0]["after"]["state_reason"] == "capacity_resume_hysteresis"
+        node.cpu_percent = 20
+        resumed = run_commercial_capacity_evaluation(
+            session, now=NOW, contract=contract, active_units=10, apply=True,
+        )
+        assert resumed["transitions"][0]["action"] == "resume"
+        assert session.query(AdminAudit).count() == 3
+
+        node.cpu_percent = None
+        unavailable = commercial_quality_snapshot(session, now=NOW)
+        assert unavailable["blocking_reasons"] == ["node_quality_unavailable"]
+        assert unavailable["nodes"][0]["missing_metrics"] == ["cpu_percent"]
+        node.cpu_percent = 20
+        node.last_health_at = (NOW - timedelta(minutes=4)).replace(tzinfo=None)
+        assert commercial_quality_snapshot(session, now=NOW)["nodes"][0]["reject_reason"] == "stale"
+    finally:
+        session.close()
+        engine.dispose()
+
+
+def test_support_pressure_is_separate_and_does_not_block_renewal() -> None:
+    engine, session = _session()
+    try:
+        contract = _ready_contract()
+        campaign = _campaign(contract, suffix="b")
+        high = SupportTicket(user_tg_id=1, priority="high")
+        overdue = SupportTicket(user_tg_id=2, sla_due_at=(NOW - timedelta(minutes=1)).replace(tzinfo=None))
+        session.add_all([
+            campaign, high, overdue,
+            SupportTicket(user_tg_id=3, waiting_on="customer", sla_due_at=overdue.sla_due_at),
+            SupportTicket(user_tg_id=4, priority="critical", environment="test"),
+            SupportTicket(user_tg_id=5, priority="high", status="closed"),
+        ])
+        session.flush()
+        quality = commercial_quality_snapshot(session, now=NOW)
+        assert quality["support"] == {
+            "open_tickets": 3, "high_priority_open_tickets": 1, "overdue_actionable_tickets": 1,
+        }
+        assert quality["blocking_reasons"] == ["support_pressure"]
+        run_commercial_capacity_evaluation(
+            session, now=NOW, contract=contract, active_units=10, apply=True,
+        )
+        assert campaign.lifecycle_status == "paused"
+        assert evaluate_campaign_policy(
+            _campaign(contract, suffix="c", objective="renewal"),
+            active_units=10, quality=quality, contract=contract, now=NOW,
+        )["activation_allowed"] is True
+        high.status = overdue.status = "closed"
+        resumed = run_commercial_capacity_evaluation(
+            session, now=NOW, contract=contract, active_units=10, apply=True,
+        )
+        assert resumed["transitions"][0]["action"] == "resume"
+    finally:
+        session.close()
+        engine.dispose()
 
 
 def test_auto_pause_hysteresis_resume_and_exempt_objectives_are_audited() -> None:
@@ -258,6 +363,7 @@ def test_forecast_exposes_revision_thresholds_caps_reservations_and_paid_counts(
             "pause_threshold_units": 210,
             "resume_below_units": 194,
             "gate_reasons": [],
+            "expansion_reasons": [],
         }
         assert readback["reservation_counts"] == {"bound": 1, "held": 1}
         assert readback["campaigns"][0]["paid_cap"] == 20

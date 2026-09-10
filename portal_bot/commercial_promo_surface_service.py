@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Mapping
 from urllib.parse import urlencode
 
+from commercial_capacity_quality import commercial_quality_snapshot
 from commercial_campaign_policy import (
     active_entitlement_capacity_units,
     campaign_record,
@@ -149,10 +150,12 @@ def commercial_winback_promo_slots(
         .limit(20)
         .all()
     )
+    quality = commercial_quality_snapshot(session, now=current)
     for campaign in campaigns:
         decision = evaluate_campaign_policy(
             campaign,
             active_units=active_units,
+            quality=quality,
             contract=commercial_contract,
             now=current,
         )

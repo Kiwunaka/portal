@@ -32,6 +32,9 @@ from migrations import run_migrations  # noqa: E402
 
 
 NOW = datetime(2026, 8, 21, 12, 0, tzinfo=timezone.utc)
+HEALTHY_QUALITY = {
+    "acquisition_permitted": True, "resume_permitted": True, "blocking_reasons": [],
+}
 
 
 def _ready_contract() -> dict:
@@ -106,6 +109,7 @@ def test_winback_campaign_is_blocked_without_exact_pilot_binding() -> None:
             paid_cap=20,
         ),
         active_units=10,
+        quality=HEALTHY_QUALITY,
         contract=contract,
         now=NOW + timedelta(hours=1),
     )
@@ -117,6 +121,7 @@ def test_repository_contract_blocks_live_campaign_without_claiming_legal_readine
     decision = evaluate_campaign_policy(
         _campaign(),
         active_units=0,
+        quality=HEALTHY_QUALITY,
         contract=get_commercial_contract(),
         now=NOW,
     )
@@ -133,6 +138,7 @@ def test_owner_approved_ready_contract_allows_bounded_campaign_only() -> None:
     decision = evaluate_campaign_policy(
         _campaign(),
         active_units=149,
+        quality=HEALTHY_QUALITY,
         contract=contract,
         now=NOW,
     )
@@ -146,6 +152,7 @@ def test_owner_approved_ready_contract_allows_bounded_campaign_only() -> None:
     no_cap = evaluate_campaign_policy(
         _campaign(paid_cap=0),
         active_units=149,
+        quality=HEALTHY_QUALITY,
         contract=contract,
         now=NOW,
     )
@@ -162,13 +169,14 @@ def test_capacity_bands_hysteresis_and_renewal_recovery_exemption() -> None:
     assert capacity_snapshot(active_units=300, contract=contract).band == "hold"
 
     blocked = evaluate_campaign_policy(
-        _campaign(), active_units=210, contract=contract, now=NOW
+        _campaign(), active_units=210, quality=HEALTHY_QUALITY, contract=contract, now=NOW
     )
     assert "capacity_forbidden" in blocked["blocking_reasons"]
 
     hysteresis = evaluate_campaign_policy(
         _campaign(),
         active_units=195,
+        quality=HEALTHY_QUALITY,
         contract=contract,
         now=NOW,
         resuming_from_capacity_pause=True,
@@ -178,6 +186,7 @@ def test_capacity_bands_hysteresis_and_renewal_recovery_exemption() -> None:
     resumed = evaluate_campaign_policy(
         _campaign(),
         active_units=194,
+        quality=HEALTHY_QUALITY,
         contract=contract,
         now=NOW,
         resuming_from_capacity_pause=True,

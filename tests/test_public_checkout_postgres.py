@@ -153,6 +153,10 @@ def test_postgres_commercial_reservation_serializes_order_and_quota(pg_checkout,
     monkeypatch.setattr(commercial.offer_service, "preview_commercial_offer", checked_preview)
     _, engine, sessions = pg_checkout
     with sessions() as session:
+        session.add(commercial.Node(
+            code="test-paid", access_role="paid", last_health_at=commercial.NOW.replace(tzinfo=None),
+            cpu_percent=20, network_tx_mbps_1m=10, packet_loss_percent=0,
+        ))
         first = commercial._seed(session)
         first_preview = commercial._preview(session, first)
         payloads = [(first_preview["offer_token"], first["tg_id"])]

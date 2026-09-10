@@ -155,6 +155,7 @@ from models import (
     WarpEvent,
     WarpMaterial,
 )
+from commercial_capacity_quality import commercial_quality_snapshot
 from commercial_campaign_policy import (
     CAMPAIGN_CHANNELS,
     CAMPAIGN_LEGAL_PROFILE_STATUSES,
@@ -8896,10 +8897,12 @@ def _campaign_lookup(
         .all()
     )
     active_capacity_units = active_entitlement_capacity_units(s, now=now_dt)
+    quality = commercial_quality_snapshot(s, now=now_dt)
     for row in rows:
         policy = evaluate_campaign_policy(
             row,
             active_units=active_capacity_units,
+            quality=quality,
             now=now_dt,
         )
         if not bool(policy.get("activation_allowed")):

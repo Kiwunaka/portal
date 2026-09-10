@@ -30,6 +30,7 @@ from models import (  # noqa: E402
     CommercialOffer,
     CommercialReservation,
     IncentiveCampaign,
+    Node,
     PromoCode,
 )
 
@@ -74,7 +75,13 @@ def _ready_contract() -> dict:
 def _session():
     engine = create_engine("sqlite:///:memory:", future=True)
     Base.metadata.create_all(engine)
-    return engine, sessionmaker(bind=engine, future=True)()
+    session = sessionmaker(bind=engine, future=True)()
+    session.add(Node(
+        code="test-paid", access_role="paid", last_health_at=NOW.replace(tzinfo=None),
+        cpu_percent=20, network_tx_mbps_1m=10, packet_loss_percent=0,
+    ))
+    session.flush()
+    return engine, session
 
 
 def _seed_offer(
@@ -275,6 +282,7 @@ def test_refresh_reuses_absolute_hold_and_expiry_cannot_be_extended() -> None:
         assert refreshed["remaining_quota_lower_bound"] == 0
         assert session.query(CommercialReservation).count() == 1
 
+        session.query(Node).one().last_health_at = (NOW + timedelta(minutes=10)).replace(tzinfo=None)
         expired = _preview(session, now=NOW + timedelta(minutes=10))
         session.commit()
         assert expired["valid"] is False
@@ -352,6 +360,13 @@ def test_invalid_promo_legal_capacity_audience_and_stale_price_return_base_witho
         capacity = _preview(session)
         assert capacity["reason_code"] == "capacity_blocked"
         monkeypatch.setattr(offer_service, "active_entitlement_capacity_units", lambda *_args, **_kwargs: 0)
+
+        node = session.query(Node).one()
+        node.cpu_percent = None
+        quality = _preview(session)
+        assert quality["reason_code"] == "capacity_blocked"
+        assert quality["offer_token"] is None
+        node.cpu_percent = 20
 
         seeded["promo"].expires_at = NOW
         session.commit()

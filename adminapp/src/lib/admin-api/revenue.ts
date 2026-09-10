@@ -202,6 +202,19 @@ export type CommercialCampaignsPayload = {
   commercial_revision: string;
   contract_sha256: string;
   campaigns: CommercialCampaignRow[];
+  capacity_automation: {
+    capacity: { active_units: number | null; limit_units: number };
+    forecast: { expansion_reasons: string[] };
+    quality: {
+      acquisition_permitted: boolean;
+      resume_permitted: boolean;
+      blocking_reasons: string[];
+      online_connections_hint: number;
+      concurrent_devices: number | null;
+      support: { open_tickets: number; high_priority_open_tickets: number; overdue_actionable_tickets: number };
+      nodes: Array<{ code: string; state: string; cpu_percent: number | null; tx_mbps: number | null; packet_loss_percent: number | null }>;
+    };
+  };
 };
 
 export type WinbackPilotDecisionPayload = {

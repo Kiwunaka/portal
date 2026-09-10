@@ -1001,11 +1001,13 @@ def _support_assistant_promo_snapshot(*, s, user: User) -> dict[str, str | None]
             .all()
         )
         active_capacity_units = active_entitlement_capacity_units(s, now=now)
+        quality = commercial_quality_snapshot(s, now=now)
         codes: list[str] = []
         for campaign in campaigns:
             policy = evaluate_campaign_policy(
                 campaign,
                 active_units=active_capacity_units,
+                quality=quality,
                 now=now,
             )
             if not bool(policy.get("activation_allowed")):
