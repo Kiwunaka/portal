@@ -22,6 +22,7 @@ from support_ai_service import (
     canonical_support_model,
     is_exact_openrouter_route,
     VISION_MODEL,
+    DEEPSEEK_41_MODEL,
 )
 
 
@@ -149,7 +150,7 @@ class XCodyChatAdapter:
     ) -> SynthesisTurn:
         from support_case_context import ATTACHMENT_PROMPT, ATTACHMENT_SCHEMA, MAX_FILE_BYTES
 
-        if (canonical_support_model(self.config.model) != VISION_MODEL
+        if (canonical_support_model(self.config.model) not in {VISION_MODEL, DEEPSEEK_41_MODEL}
                 or not is_exact_openrouter_route(self.config.api_base_url)
                 or not self.config.api_key or not 1 <= len(images) <= 3
                 or any(mime not in {"image/png", "image/jpeg", "image/webp"}
@@ -158,9 +159,10 @@ class XCodyChatAdapter:
             _raise_provider_error(retryable=False, code="provider_request_invalid", status=0)
         timeout = _validated_timeout(request_timeout, maximum=provider_timeout_ceiling(self.config.api_base_url))
         controls = provider_response_controls(self.config)
-        controls["response_format"]["json_schema"] = {
-            "name": "pokrov_support_attachment", "strict": True, "schema": ATTACHMENT_SCHEMA,
-        }
+        if controls["response_format"]["type"] == "json_schema":
+            controls["response_format"]["json_schema"] = {
+                "name": "pokrov_support_attachment", "strict": True, "schema": ATTACHMENT_SCHEMA,
+            }
         payload = {
             "model": provider_wire_model(self.config),
             "messages": [
@@ -202,8 +204,6 @@ class XCodyChatAdapter:
             or not self.config.model
             or not isinstance(self.config.reasoning_effort, str)
             or not self.config.reasoning_effort
-            or type(self.config.max_output_tokens) is not int
-            or not 1 <= self.config.max_output_tokens <= 1_200
             or type(self.config.max_context_chars) is not int
             or self.config.max_context_chars < 1_000
         ):

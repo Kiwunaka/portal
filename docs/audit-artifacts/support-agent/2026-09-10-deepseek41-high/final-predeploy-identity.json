@@ -1,0 +1,178 @@
+{
+  "origin": "brain-origin",
+  "checked_at": "2026-09-10T08:07:17.187388+00:00",
+  "customer_data_used": false,
+  "database_used": false,
+  "customer_message_sent": false,
+  "production_changed": false,
+  "runtime_model": "deepseek-v4.1-flash",
+  "runtime_effort": "high",
+  "runner_sha256": "4688bb7abf81b732ed34d79929dd2401a676ff69fc4177b954a79579ce00901a",
+  "experiment_overrides": {},
+  "provider_timeout": 45.0,
+  "run_deadline": 50.0,
+  "files": {
+    "support_agent_harness.py": "c93481a87c3426f2f9dba8b6a419ff9589a97bcaa79d275d636a32e88abfc4d3",
+    "support_agent_provider.py": "b893d545eefbbe4dd487af633502a41dfa9ee0d90a27b635a8f9eedce0fbb1b8",
+    "support_agent_policy.py": "1dee9d18ba3e62e4aa0e29ef0aadfa9173ff74620c2db77e75efd1a3f2543760",
+    "support_agent_service.py": "058f922c5ed5723892510b645f57ed17407b86b999b2b83cdb762a4401b76825",
+    "support_ai_service.py": "dc81115959af6a20b588e21d678cda882813cd2e271f50d3858947f5b35506cf",
+    "support_case_context.py": "43544820a70c6935508519098ca01b354ed1eb7c5bdf43a4fc396769d220e814",
+    "support-ai-knowledge.json": "d29439143669320dd2ccb339d5fd48c5d4be55098efe943def46fc78e5db4d9a",
+    "support-agent-policy.json": "fa25f12d27cd5c8ca36c87494b8d8c8d52bd4c30ed2860ee23bb1be7dde5fb56"
+  },
+  "catalog": [
+    {
+      "id": "deepseek/deepseek-v4.1-flash",
+      "canonical_slug": "deepseek/deepseek-v4.1-flash-20260910",
+      "hugging_face_id": "deepseek-ai/DeepSeek-V4.1-Flash",
+      "name": "DeepSeek: DeepSeek V4.1 Flash",
+      "created": 1789021285,
+      "description": "DeepSeek V4.1 Flash is a sparse mixture-of-experts model from DeepSeek, and the cost-efficient tier of the V4.1 family. DeepSeek reports that it exceeds V4 Pro on performance, speed, and task...",
+      "context_length": 1048576,
+      "architecture": {
+        "modality": "text+image->text",
+        "input_modalities": [
+          "text",
+          "image"
+        ],
+        "output_modalities": [
+          "text"
+        ],
+        "tokenizer": "DeepSeek",
+        "instruct_type": null
+      },
+      "pricing": {
+        "prompt": "0.0000003",
+        "completion": "0.0000012",
+        "input_cache_read": "0.000000006",
+        "overrides": [
+          {
+            "utc_days": [
+              "saturday",
+              "sunday"
+            ],
+            "prompt": "0.00000015",
+            "completion": "0.0000006",
+            "input_cache_read": "0.000000003"
+          },
+          {
+            "utc_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ],
+            "utc_start": 0,
+            "utc_end": 100,
+            "prompt": "0.00000015",
+            "completion": "0.0000006",
+            "input_cache_read": "0.000000003"
+          },
+          {
+            "utc_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ],
+            "utc_start": 100,
+            "utc_end": 400,
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000006"
+          },
+          {
+            "utc_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ],
+            "utc_start": 400,
+            "utc_end": 600,
+            "prompt": "0.00000015",
+            "completion": "0.0000006",
+            "input_cache_read": "0.000000003"
+          },
+          {
+            "utc_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ],
+            "utc_start": 600,
+            "utc_end": 1000,
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000006"
+          },
+          {
+            "utc_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ],
+            "utc_start": 1000,
+            "utc_end": 0,
+            "prompt": "0.00000015",
+            "completion": "0.0000006",
+            "input_cache_read": "0.000000003"
+          }
+        ]
+      },
+      "top_provider": {
+        "context_length": 1048576,
+        "max_completion_tokens": 384000,
+        "is_moderated": false
+      },
+      "per_request_limits": null,
+      "supported_parameters": [
+        "frequency_penalty",
+        "include_reasoning",
+        "logprobs",
+        "max_tokens",
+        "presence_penalty",
+        "reasoning",
+        "reasoning_effort",
+        "response_format",
+        "stop",
+        "temperature",
+        "tool_choice",
+        "tools",
+        "top_logprobs",
+        "top_p"
+      ],
+      "default_parameters": {},
+      "supported_voices": null,
+      "knowledge_cutoff": null,
+      "expiration_date": null,
+      "links": {
+        "details": "/api/v1/models/deepseek/deepseek-v4.1-flash-20260910/endpoints"
+      },
+      "reasoning": {
+        "mandatory": false,
+        "default_enabled": true,
+        "supported_efforts": [
+          "max",
+          "high",
+          "low"
+        ],
+        "default_effort": "high"
+      }
+    }
+  ],
+  "profiles": [
+    [
+      "deepseek/deepseek-v4.1-flash",
+      "high"
+    ]
+  ]
+}

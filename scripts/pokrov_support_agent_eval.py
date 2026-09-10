@@ -1294,7 +1294,6 @@ def _live_config(api_key: str, base_url: str) -> SupportAIConfig:
         max_user_chars=1_200,
         max_answer_chars=1_200,
         min_interval_seconds=0.0,
-        max_output_tokens=1_200,
     )
 
 

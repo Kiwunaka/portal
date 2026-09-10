@@ -1,0 +1,184 @@
+{
+  "origin": "brain-origin",
+  "checked_at": "2026-09-10T08:23:28.705159+00:00",
+  "customer_data_used": false,
+  "database_used": false,
+  "customer_message_sent": false,
+  "production_changed": false,
+  "runtime_model": "deepseek-v4.1-flash",
+  "runtime_effort": "high",
+  "runner_sha256": "4688bb7abf81b732ed34d79929dd2401a676ff69fc4177b954a79579ce00901a",
+  "experiment_overrides": {},
+  "provider_timeout": 45.0,
+  "run_deadline": 50.0,
+  "files": {
+    "support_agent_sessions.py": "0f0fb9480978aa44191eb3375ab9f254821e2a42bc99ad72c81b860b888fbabd",
+    "support_agent_grounding.py": "96319759a3b3575c564ccedb245c49adb41890ab02be5b47b7313b99c8e7d6fb",
+    "support_agent_context.py": "bef63cbc43130bfbe9cb1454f46bf672d1eca3ebb4f9876557d1c3dd874cee82",
+    "support_agent_knowledge.py": "bfc92f9f8227b0106bfc7655a56cb2053b9aa732144ec91cae59f0df562d00f2",
+    "support_agent_safety.py": "1b10c1587d5a6690b9b8c9f5aca820955d73d239cc35150537dad0593f2c9edb",
+    "support_agent_harness.py": "c93481a87c3426f2f9dba8b6a419ff9589a97bcaa79d275d636a32e88abfc4d3",
+    "support_agent_provider.py": "dff934b2286d9bf57f37993a5332f1e7db2686672b7cf030047db8799a766744",
+    "support_agent_policy.py": "fd6b134aab75b2bac7b2af432a5accfa72b1f0d9185c0db309f1f0c620ea0b28",
+    "support_agent_service.py": "b07a7fb4fe4579d9f43b4e304e7ba4b9537b25b9f320f9be4af7290fe943c8f0",
+    "support_agent_state.py": "81df82edd2a41c85aa414b239bba8e5e879f1a5ca959ded8fb89daff7de9a85e",
+    "support_ai_service.py": "01438a33fbc560483bb787aaadf0b601db27fdc416552ab076bd279499551cfd",
+    "support_case_context.py": "a8d798c1232bb79fed9b2105d4e4078150a86436aa6be4c1775e9c5ab217ea36",
+    "support-ai-knowledge.json": "d29439143669320dd2ccb339d5fd48c5d4be55098efe943def46fc78e5db4d9a",
+    "support-agent-policy.json": "63929ac1a047978e34b6d38c24458e70566761834c99ea407acf1fcaaa9a6fc5"
+  },
+  "catalog": [
+    {
+      "id": "deepseek/deepseek-v4.1-flash",
+      "canonical_slug": "deepseek/deepseek-v4.1-flash-20260910",
+      "hugging_face_id": "deepseek-ai/DeepSeek-V4.1-Flash",
+      "name": "DeepSeek: DeepSeek V4.1 Flash",
+      "created": 1789021285,
+      "description": "DeepSeek V4.1 Flash is a sparse mixture-of-experts model from DeepSeek, and the cost-efficient tier of the V4.1 family. DeepSeek reports that it exceeds V4 Pro on performance, speed, and task...",
+      "context_length": 1048576,
+      "architecture": {
+        "modality": "text+image->text",
+        "input_modalities": [
+          "text",
+          "image"
+        ],
+        "output_modalities": [
+          "text"
+        ],
+        "tokenizer": "DeepSeek",
+        "instruct_type": null
+      },
+      "pricing": {
+        "prompt": "0.0000003",
+        "completion": "0.0000012",
+        "input_cache_read": "0.000000006",
+        "overrides": [
+          {
+            "utc_days": [
+              "saturday",
+              "sunday"
+            ],
+            "prompt": "0.00000015",
+            "completion": "0.0000006",
+            "input_cache_read": "0.000000003"
+          },
+          {
+            "utc_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ],
+            "utc_start": 0,
+            "utc_end": 100,
+            "prompt": "0.00000015",
+            "completion": "0.0000006",
+            "input_cache_read": "0.000000003"
+          },
+          {
+            "utc_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ],
+            "utc_start": 100,
+            "utc_end": 400,
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000006"
+          },
+          {
+            "utc_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ],
+            "utc_start": 400,
+            "utc_end": 600,
+            "prompt": "0.00000015",
+            "completion": "0.0000006",
+            "input_cache_read": "0.000000003"
+          },
+          {
+            "utc_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ],
+            "utc_start": 600,
+            "utc_end": 1000,
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000006"
+          },
+          {
+            "utc_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ],
+            "utc_start": 1000,
+            "utc_end": 0,
+            "prompt": "0.00000015",
+            "completion": "0.0000006",
+            "input_cache_read": "0.000000003"
+          }
+        ]
+      },
+      "top_provider": {
+        "context_length": 1048576,
+        "max_completion_tokens": 384000,
+        "is_moderated": false
+      },
+      "per_request_limits": null,
+      "supported_parameters": [
+        "frequency_penalty",
+        "include_reasoning",
+        "logprobs",
+        "max_tokens",
+        "presence_penalty",
+        "reasoning",
+        "reasoning_effort",
+        "response_format",
+        "stop",
+        "temperature",
+        "tool_choice",
+        "tools",
+        "top_logprobs",
+        "top_p"
+      ],
+      "default_parameters": {},
+      "supported_voices": null,
+      "knowledge_cutoff": null,
+      "expiration_date": null,
+      "links": {
+        "details": "/api/v1/models/deepseek/deepseek-v4.1-flash-20260910/endpoints"
+      },
+      "reasoning": {
+        "mandatory": false,
+        "default_enabled": true,
+        "supported_efforts": [
+          "max",
+          "high",
+          "low"
+        ],
+        "default_effort": "high"
+      }
+    }
+  ],
+  "profiles": [
+    [
+      "deepseek/deepseek-v4.1-flash",
+      "high"
+    ]
+  ]
+}

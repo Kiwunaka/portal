@@ -236,7 +236,7 @@ class SupportAgentPolicyStore:
             output["language"] != "ru"
             or output["format"] != "json_v1"
             or type(output["max_reply_chars"]) is not int
-            or output["max_reply_chars"] != 1200
+            or output["max_reply_chars"] != 12000
         ):
             raise PolicyValidationError("policy_output_invalid")
 
@@ -257,7 +257,7 @@ class SupportAgentPolicyStore:
             forbidden_data=forbidden_data,
             language="ru",
             output_format="json_v1",
-            max_reply_chars=1200,
+            max_reply_chars=12000,
             escalation_rules=escalation_rules,
             forbidden_claim_patterns=claims,
         )

@@ -590,7 +590,7 @@ class SupportAgentHarness:
                 request.session_scope.internal_session_key,
                 (
                     StoredMessage(role="user", content=user_text),
-                    StoredMessage(role="assistant", content=assistant_text),
+                    StoredMessage(role="assistant", content=assistant_text[:1200]),
                 ),
                 state,
                 request.now,

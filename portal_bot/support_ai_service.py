@@ -23,7 +23,8 @@ OPENROUTER_API_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_DEEPSEEK_V4_FLASH_0731_MODEL = "deepseek/deepseek-v4-flash-0731"
 VISION_MODEL = "deepseek-v4-flash-vision-exp"
 OPENROUTER_VISION_MODEL = "deepseek/deepseek-v4-flash-vision-exp"
-SUPPORTED_MODELS = frozenset({DEFAULT_MODEL, VISION_MODEL})
+DEEPSEEK_41_MODEL = "deepseek-v4.1-flash"
+SUPPORTED_MODELS = frozenset({DEFAULT_MODEL, VISION_MODEL, DEEPSEEK_41_MODEL})
 DEFAULT_PROVIDER_TIMEOUT_SECONDS = 20.0
 OPENROUTER_PROVIDER_TIMEOUT_SECONDS = 45.0
 OPENROUTER_RUN_DEADLINE_SECONDS = 50.0
@@ -275,6 +276,8 @@ def canonical_support_model(value: str | None) -> str:
         return DEFAULT_MODEL
     if raw in {VISION_MODEL, OPENROUTER_VISION_MODEL}:
         return VISION_MODEL
+    if raw in {DEEPSEEK_41_MODEL, "deepseek/" + DEEPSEEK_41_MODEL}:
+        return DEEPSEEK_41_MODEL
     return raw
 
 
@@ -309,9 +312,8 @@ class SupportAIConfig:
     knowledge_path: str = str(DEFAULT_KNOWLEDGE_PATH)
     max_context_chars: int = 30000
     max_user_chars: int = 1200
-    max_answer_chars: int = 1200
+    max_answer_chars: int = 12000
     min_interval_seconds: float = 30.0
-    max_output_tokens: int = 1200
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "SupportAIConfig":
@@ -340,12 +342,9 @@ class SupportAIConfig:
                 source.get("SUPPORT_AI_MAX_USER_CHARS"), default=1200, maximum=1200
             ),
             max_answer_chars=_bounded_env_int(
-                source.get("SUPPORT_AI_MAX_ANSWER_CHARS"), default=1200, maximum=1200
+                source.get("SUPPORT_AI_MAX_ANSWER_CHARS"), default=12000, maximum=12000
             ),
             min_interval_seconds=_parse_float(source.get("SUPPORT_AI_MIN_INTERVAL_SECONDS"), default=30.0),
-            max_output_tokens=_bounded_env_int(
-                source.get("SUPPORT_AI_MAX_OUTPUT_TOKENS"), default=1200, maximum=1200
-            ),
         )
 
 
@@ -380,7 +379,7 @@ def provider_wire_model(config: SupportAIConfig) -> str:
 
 
 def provider_generation_controls(config: SupportAIConfig) -> dict[str, Any]:
-    """Keep 0731 reasoning provider-managed while bounding the final answer."""
+    """Leave reasoning and completion token budgets to the provider."""
     if (
         canonical_support_model(config.model) in SUPPORTED_MODELS
         and is_exact_openrouter_route(config.api_base_url)
@@ -392,13 +391,18 @@ def provider_generation_controls(config: SupportAIConfig) -> dict[str, Any]:
             }
         }
     return {
-        "max_tokens": config.max_output_tokens,
         "reasoning_effort": config.reasoning_effort,
     }
 
 
 def provider_response_controls(config: SupportAIConfig) -> dict[str, Any]:
     """Require the owned OpenRouter route to return the support wire contract."""
+    if (canonical_support_model(config.model) == DEEPSEEK_41_MODEL
+            and is_exact_openrouter_route(config.api_base_url)):
+        # This endpoint rejects json_schema; the local closed-schema validator
+        # still checks every reply and attachment projection.
+        return {"response_format": {"type": "json_object"},
+                "provider": {"require_parameters": True, "data_collection": "allow"}}
     if (
         canonical_support_model(config.model) in SUPPORTED_MODELS
         and is_exact_openrouter_route(config.api_base_url)
