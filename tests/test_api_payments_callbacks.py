@@ -1560,6 +1560,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             EntitlementGrant,
             ExternalOrder,
             IncentiveCampaign,
+            Node,
             PromoCode,
             User,
         )
@@ -1579,6 +1580,10 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         campaign_public_id = "cmp_" + "a" * 32
         s = SessionLocal()
         try:
+            s.add(Node(
+                code="test-paid", access_role="paid", last_health_at=current,
+                cpu_percent=20, network_tx_mbps_1m=10, packet_loss_percent=0,
+            ))
             user = User(
                 tg_id=7781,
                 username="commercial_order",
