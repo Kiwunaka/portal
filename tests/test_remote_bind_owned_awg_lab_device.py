@@ -92,7 +92,7 @@ def material_selector(monkeypatch):
 def test_binder_does_not_copy_another_devices_material(material_selector) -> None:
     session, select, seed, models = material_selector
     seed("foreign", bytes(32))
-    assert select(session, 1001, "target") == (None, None)
+    assert select(session, 1001, "target", "awg31_lab") == (None, None)
     assert all(session.query(model).count() == 1 for model in models)
 
 
@@ -100,10 +100,10 @@ def test_repeated_bind_reuses_exact_target_without_refreshing_age(material_selec
     session, select, seed, models = material_selector
     own = seed("target", bytes(32), age_days=1)
     seed("foreign", bytes(range(32)))
-    before = [(row.id, row.provisioned_at, row.endpoint_ciphertext) for row in own]
+    before = [(row.id, row.provisioned_at, row.endpoint_ciphertext) for row in own[1:]]
     for _ in range(2):
-        result = select(session, 1001, "target")
-        assert [(row.id, row.provisioned_at, row.endpoint_ciphertext) for row in result] == before
+        result = select(session, 1001, "target", "awg31_lab")
+        assert [(row.id, row.provisioned_at, row.endpoint_ciphertext) for row in result if row is not None] == before
     assert all(session.query(model).count() == 2 for model in models)
     assert not session.new and not session.dirty and not session.deleted
 
@@ -114,7 +114,7 @@ def test_binder_rejects_key_shared_with_foreign_history(material_selector) -> No
     seed("target", bytes(32))
     seed("foreign", bytes([1]) + bytes(31), state="rotated")
     with pytest.raises(AwgDeviceKeyError, match="material_key_already_bound"):
-        select(session, 1001, "target")
+        select(session, 1001, "target", "awg31_lab")
     assert not session.new and not session.dirty and not session.deleted
 
 
@@ -122,8 +122,34 @@ def test_binder_does_not_refresh_expired_material(material_selector) -> None:
     session, select, seed, _ = material_selector
     own = seed("target", bytes(32), age_days=8)
     before = [row.provisioned_at for row in own]
-    assert select(session, 1001, "target") == (None, None)
+    assert select(session, 1001, "target", "awg31_lab") == (None, None)
     assert [row.provisioned_at for row in own] == before
+
+
+def test_awg31_binding_needs_only_its_own_material_and_allowlist(material_selector) -> None:
+    session, select, seed, _ = material_selector
+    awg2, awg31 = seed("target", bytes(32))
+    session.delete(awg2)
+    session.commit()
+    rows = select(session, 1001, "target", "awg31_lab")
+    assert rows == (None, awg31)
+    tree = ast.parse(_remote_helper())
+    available = next(node.value for node in ast.walk(tree) if isinstance(node, ast.Assign)
+                     and any(isinstance(target, ast.Name) and target.id == "source_material_available"
+                             for target in node.targets))
+    assert eval(compile(ast.Expression(available), str(SCRIPT), "eval"),
+                {"awg2_row": rows[0], "awg31_row": rows[1]}) is True
+    gate_loop = next(node for node in tree.body if isinstance(node, ast.For)
+                     and isinstance(node.target, ast.Name) and node.target.id == "name")
+    config = {"awg2_lab": {"allowlist_install_ids": ["target"], "expires_at": "unchanged"},
+              "awg31_lab": {"allowlist_install_ids": []}}
+    scope = {"current": config, "selected_profile": "awg31_lab", "install_id": "target",
+             "tg_id": 1001, "target_user": type("User", (), {"tg_id": 1001})(),
+             "cleanup_tg_ids": {1001}, "expires_at": "new-awg31-expiry"}
+    exec(compile(ast.Module(body=[gate_loop], type_ignores=[]), str(SCRIPT), "exec"), scope)
+    assert config["awg2_lab"] == {"allowlist_install_ids": [], "allowlist_tg_ids": [],
+                                   "expires_at": "unchanged"}
+    assert config["awg31_lab"]["allowlist_install_ids"] == ["target"]
 
 
 @pytest.mark.parametrize("config", [
