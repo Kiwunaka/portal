@@ -688,7 +688,7 @@ Rollout rule:
 - `legacy_reality_fallback` stays the rollback and manual/export baseline transport profile
 - `grpc_443_primary` is the new app-first primary profile for allowlisted cohorts and premium-node canaries
 - `reserve_xhttp_cdn` is the hidden reserve profile prepared on eligible nodes for emergency allowlisted fallback; it is not part of the default public rollout in this wave
-- `ru_bridge_relay` is the RU reachability bridge for allowlisted, incident-promoted, or temporary default cohorts; it exposes countries first, then nested direct/`Белые списки` choices through configured bridge endpoints for non-US targets, while US stays direct-only. `mini` remains the legacy primary endpoint, and additional RU/RU-SPB bridge endpoints can appear as type 2/type 3 choices without replacing `mini`.
+- `ru_bridge_relay` is the RU reachability bridge for allowlisted, incident-promoted, or temporary default cohorts; it exposes countries first, then nested direct/`Белые списки` choices through configured bridge endpoints for foreign non-US targets. US and Russian delivery nodes stay direct-only, without RU-to-RU detours. `mini` remains the legacy primary endpoint, and additional RU/RU-SPB bridge endpoints can appear as type 2/type 3 choices without replacing `mini`.
 - sing-box subscription routing keeps RU IP ranges direct, blocks the mirrored adblock rule set, and routes BitTorrent to a hidden RU selector when at least one RU delivery node is present; if no RU delivery node is available, BitTorrent falls back to the legacy direct behavior
 - `operator_lab` stays hidden behind allowlists and must not appear in public UI or mass session payloads
 - `Naive`, `Trojan`, and `Hysteria2` are not part of the mass public payload for this wave

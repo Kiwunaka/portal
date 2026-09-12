@@ -202,6 +202,10 @@ def _ru_bridge_endpoints_for_node(
 
     if not ru_bridge_relay_enabled(rollout_config):
         return []
+    code = str(getattr(node, "code", "") or "").strip().lower()
+    base = _node_code_base(code)
+    if base == "ru":
+        return []
     raw_endpoints = ru_bridge_relay_endpoints(rollout_config)
     endpoints: list[dict[str, Any]] = []
     seen_ids = {"direct"}
@@ -218,8 +222,6 @@ def _ru_bridge_endpoints_for_node(
     if not endpoints:
         return []
 
-    code = str(getattr(node, "code", "") or "").strip().lower()
-    base = _node_code_base(code)
     allowlist = set(transport_node_allowlist(rollout_config, RU_BRIDGE_RELAY))
     excluded = set(transport_node_exclusions(rollout_config, RU_BRIDGE_RELAY))
     if allowlist and code not in allowlist and base not in allowlist:

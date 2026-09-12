@@ -2,7 +2,7 @@
 
 ## Scope And Lanes
 
-This is the universal Codex contract for the POKROV platform repository. The platform lane owns `portal_bot/`, `webapp/`, `adminapp/`, `marketing/`, `shared/`, `infra/`, `scripts/`, tests, and root documentation.
+Platform scope: `portal_bot/`, `webapp/`, `adminapp/`, `marketing/`, `shared/`, `infra/`, `scripts/`, tests, and root documentation.
 
 The Android and Windows client is a separate repository at `C:/Users/kiwun/Documents/ai/POKROV-app`; its promotion line is `POKROV-app/main`. Do not treat retained bridge, bootstrap, or client archive material in this repository as an active client lane.
 
@@ -59,6 +59,9 @@ Do not claim stable release status, store availability, trusted signing, physica
 Keep `current-origin`, `brain-origin`, and `RU-origin` checks distinct in evidence and handoffs.
 
 ## Git, Worktrees, And Cleanup
+
+Use hypervisor API/CLI and saved guest access for owned VMs; do not request
+Computer Use or passwords from the owner. Use ADB for the connected phone.
 
 The platform promotes through `master`; the separate client promotes through `main`. Use a scoped feature branch or worktree for implementation and keep the platform/client boundary intact.
 
