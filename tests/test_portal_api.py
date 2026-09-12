@@ -303,7 +303,7 @@ class PortalApiTests(unittest.TestCase):
         self.assertEqual(outbounds["POKROV мост Белые списки тип 2 §hide§"]["server"], "158.255.3.39")
         self.assertEqual(outbounds["POKROV мост Белые списки тип 3 §hide§"]["server"], "193.233.216.73")
 
-    def test_singbox_bridge_omits_endpoint_that_targets_selected_delivery_node(self) -> None:
+    def test_singbox_bridge_keeps_russian_delivery_nodes_direct(self) -> None:
         import importlib
 
         api = importlib.import_module("api")
@@ -375,8 +375,8 @@ class PortalApiTests(unittest.TestCase):
             transport_profile=api.LEGACY_REALITY_FALLBACK,
         )
 
-        self.assertEqual([item["id"] for item in ru_endpoints], ["mini", "ru_spb"])
-        self.assertEqual([item["id"] for item in spb_endpoints], ["mini", "ru"])
+        self.assertEqual(ru_endpoints, [])
+        self.assertEqual(spb_endpoints, [])
         self.assertTrue(
             api._ru_bridge_endpoint_targets_node(
                 endpoint={"id": "renamed", "endpoint_host": "RU.TEST."},
@@ -393,7 +393,7 @@ class PortalApiTests(unittest.TestCase):
                     transport_profile=api.LEGACY_REALITY_FALLBACK,
                 )
             ],
-            ["direct", "mini", "ru"],
+            ["direct"],
         )
 
         cfg = api._singbox_multi_node_config(
@@ -403,10 +403,8 @@ class PortalApiTests(unittest.TestCase):
             rollout_config=rollout_config,
         )
         selector = next(item for item in cfg["outbounds"] if item.get("tag") == "🌍 Страны")
-        self.assertNotIn("🇷🇺 Россия · Белые списки тип 2", selector["outbounds"])
-        self.assertNotIn("🇷🇺 Россия Spb · Белые списки тип 3", selector["outbounds"])
-        self.assertIn("🇷🇺 Россия · Белые списки тип 3", selector["outbounds"])
-        self.assertIn("🇷🇺 Россия Spb · Белые списки тип 2", selector["outbounds"])
+        self.assertEqual(selector["outbounds"], ["🇷🇺 Россия", "🇷🇺 Россия Spb"])
+        self.assertFalse(any(item.get("detour") for item in cfg["outbounds"]))
 
     def test_node_label_ru_supports_russia_variants(self) -> None:
         import importlib
