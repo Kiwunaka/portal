@@ -18,6 +18,9 @@ Root `AGENTS.md` is the only tracked platform instruction file. Put scoped navig
 
 ## Proportional Engineering
 
+- Finish the assigned user scenario before starting another implementation or evidence cycle. Do not substitute intermediate PASS reports, repeated builds, or growing evidence bundles for completing its acceptance criteria.
+- Run only checks that prove changed behavior or satisfy an applicable required gate. Repeat a passed check only after a relevant change, a failure, or new evidence that invalidates its result. Do not add tests, rebuild packages, or create reports merely to show progress; after sufficient verification, integrate the result and continue to the next required outcome.
+
 - Apply KISS, YAGNI, and the Pareto principle. Make the smallest maintainable change that satisfies explicit acceptance criteria and evidence; prefer existing patterns and code paths.
 - Do not add speculative abstractions, dependencies, compatibility layers, fallbacks, configuration, cleanup, documentation, or future-proofing outside the assigned scope.
 - Keep verification proportional. Add or update only the smallest focused tests needed to prove changed behavior or prevent a concrete observed regression. Do not add redundant unit/integration/E2E coverage, exhaustive edge-case matrices, broad regression suites, or unrelated test refactors unless the task, affected shared contract, or observed failure requires them.

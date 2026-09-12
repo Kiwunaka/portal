@@ -88,11 +88,13 @@ from db import SessionLocal
 from models import AccountDevice, Awg2LabMaterial, Awg31LabMaterial, Event, User
 from network_rollout import load_network_rollout_config, resolved_client_policy
 
-def load_target_materials(session, tg_id, install_id):
+def load_target_materials(session, tg_id, install_id, selected_profile):
     policy = load_network_rollout_config(session=session)
     rows = (
-        ready_awg2(session, tg_id=tg_id, install_id=install_id, rollout_value=policy.get("awg2_lab")),
-        ready_awg31(session, tg_id=tg_id, install_id=install_id, rollout_value=policy.get("awg31_lab")),
+        ready_awg2(session, tg_id=tg_id, install_id=install_id, rollout_value=policy.get("awg2_lab"))
+        if selected_profile == "awg2_lab" else None,
+        ready_awg31(session, tg_id=tg_id, install_id=install_id, rollout_value=policy.get("awg31_lab"))
+        if selected_profile == "awg31_lab" else None,
     )
     for row, model, decrypt in zip(rows, (Awg2LabMaterial, Awg31LabMaterial), (decrypt_awg2, decrypt_awg31)):
         if row is not None:
@@ -426,10 +428,10 @@ with SessionLocal() as session:
     awg2_row = awg31_row = None
     if selected_profile != "default":
         try:
-            awg2_row, awg31_row = load_target_materials(session, tg_id, install_id)
+            awg2_row, awg31_row = load_target_materials(session, tg_id, install_id, selected_profile)
         except AwgDeviceKeyError as error:
             blocked(error.code)
-    source_material_available = awg2_row is not None and awg31_row is not None
+    source_material_available = awg2_row is not None or awg31_row is not None
     if selected_profile != "default" and not source_material_available:
         blocked(
             "owned_awg_device_material_not_ready",
@@ -650,8 +652,8 @@ expires_at = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat().repl
     "+00:00", "Z"
 )
 cohorts = dict(current.get("cohort_overrides") or {})
+cleanup_tg_ids = {tg_id, int(target_user.tg_id)}
 if selected_profile == "default":
-    cleanup_tg_ids = {tg_id, int(target_user.tg_id)}
     cohort = dict(cohorts.get("candidate4-awg-lab") or {})
     cohort["install_ids"] = [
         value for value in list(cohort.get("install_ids") or []) if value != install_id
@@ -684,7 +686,7 @@ else:
 current["cohort_overrides"] = cohorts
 for name in ("awg2_lab", "awg31_lab"):
     lab = dict(current.get(name) or {})
-    if selected_profile == "default":
+    if selected_profile == "default" or name != selected_profile:
         lab["allowlist_install_ids"] = [
             value
             for value in list(lab.get("allowlist_install_ids") or [])

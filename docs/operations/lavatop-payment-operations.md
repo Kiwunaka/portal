@@ -96,3 +96,15 @@ path before those webhook subscriptions can establish production maturity.
 When evidence is missing for a plan or route, checkout must show unavailable/degraded state rather than live purchase copy. The active public beta configuration is Lava.top-only; older provider-specific code paths are retained for legacy/reconciliation tests, not for public provider selection.
 
 Do not enable `lavatop` in the public provider list unless the webhook auth secret is configured. Missing or invalid webhook auth is treated as an invalid payment signature and cannot activate access.
+
+
+## R12 live acceptance boundary — owner decision 2026-09-13
+
+For the current consolidated release plan, the owner accepts payment initiation
+and provider acceptance as the live gate. The current production adapter
+created one99RUB invoice and received HTTP201 plus an HTTPS checkout URL;
+see the [redacted receipt](../developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/b06-payment-start-20260913.json).
+Do not wait for paid/settlement or run a charge/refund to close this gate.
+Those live outcomes are SKIPPED_BY_OWNER, not proven. Existing callback,
+idempotency, fulfillment and refund safeguards remain required. Creating an
+invoice never marks an order paid or grants access. The budget remains $0.

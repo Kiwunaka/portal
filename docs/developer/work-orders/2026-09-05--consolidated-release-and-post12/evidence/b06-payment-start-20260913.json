@@ -1,0 +1,40 @@
+{
+  "status": "PASS_PROVIDER_INVOICE_ACCEPTED",
+  "utc": "2026-09-12T22:58:31.889738+00:00",
+  "provider": "lavatop",
+  "operation": "create_invoice",
+  "invoice_amount_rub": 99,
+  "charge_requested": false,
+  "paid_status_waited": false,
+  "provider_module_sha256": "54e1aba8880e75b14d4458abb706b6dcfd1aac1c395c0ed691c63d762cc6c38c",
+  "http_metrics": [
+    {
+      "provider": "lavatop",
+      "operation": "create_invoice",
+      "status": 201,
+      "result_code": "ok",
+      "count": 1,
+      "latency_total_ms": 1859,
+      "latency_max_ms": 1859,
+      "connector_queue_entries": 0,
+      "connector_wait_total_ms": 0,
+      "connector_wait_max_ms": 0
+    }
+  ],
+  "provider_accepted": true,
+  "payment_url_present": true,
+  "payment_url_https": true,
+  "payment_host": "app.lava.top",
+  "payment_url_sha256": "042d5eba960ea57728602e76dd98cde0853c97c1b0b48e53b57806f61e2feec6",
+  "response_sha256": "a3296c7fc96c2b3373e76ae86d2fa02d18a72c92f5ddc227bac33d4e7529e31d",
+  "raw_provider_payload_returned": false,
+  "paid_or_settled_proven": false,
+  "completed_utc": "2026-09-12T22:58:33.752239+00:00",
+  "origin": "brain-origin; current production payment provider module and environment",
+  "source_lf_sha256": "1e292dcd6d10b50fbd7513a1a3adf023f3b7fcedf480f0d427acde94e5b21513",
+  "acceptance_scope": "Owner September13: create payment and confirm provider acceptance; do not wait for paid or settlement",
+  "terminal_payment_and_live_refund_gate": "SKIPPED_BY_OWNER",
+  "full_public_checkout_ui": "NOT_TESTED_BY_THIS_CALL",
+  "first_attempt": "Stopped locally before HTTP: missing PaymentHttpRegistry; recognized exact503 hash; next attempt used the normal registry",
+  "spent_usd": 0
+}

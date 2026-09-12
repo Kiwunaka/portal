@@ -1206,7 +1206,8 @@ Transport policy rule:
 - `awg2_lab` is a separate owner-only sing-box endpoint lane. Source defaults are `enabled=false` and `kill_switch_engaged=true`. Selection additionally requires the exact `pokrov.awg2.endpoint.v1` ID/SHA, `awg2-v1` endpoint revision, current generation, Windows/Android platform, install/user and node allowlists, a ready POKROV-owned `server_record_id`, and a current encrypted row in `awg2_lab_materials` for that exact device.
 - AWG2 endpoint material is provisioned only through the L3 guarded `PUT /api/admin/client/awg2-lab/material`; intent, preview, audit and result retain fingerprints and safe generation/server/node state, never the endpoint, keys or raw install ID. `AWG2_LAB_MATERIAL_SECRET` must come from the secret manager and must not be committed.
 - AWG2/AWG3.1 material replacement rejects a client public key already bound to another device, including retained history; a revoked key cannot be reissued. Compare the derived X25519 public key, not raw private-key text or a whole endpoint hash. The existing PostgreSQL transaction boundary serializes competing insertions of the same key. This is a material-store guard; a live server peer still requires its corresponding guarded operator provisioning/removal.
-- `scripts/remote_bind_owned_awg_lab_device.py` selects only the target device's already provisioned, current, exclusive AWG2/AWG3.1 material. It no longer copies another device's keys or reissues material during profile selection. Repeated binding preserves material age and generation. Missing, expired, incompatible or historically shared keys fail before rollout mutation; first-time provisioning and rotation remain separate L3 material operations after preparing the matching server peers. Existing shared-key lab records must be migrated individually, with retained rollback, before selective server revoke. The script requires a backend source containing the key-binding guard.
+- `scripts/remote_bind_owned_awg_lab_device.py` selects only the target device's already provisioned, current, exclusive material for the requested profile. AWG3.1 selection does not require or decrypt AWG2 material and admits the install only to the selected lab; it removes that install from the other lab allowlist without renewing that lab's expiry. It never copies another device's keys or reissues material during selection. Repeated binding preserves material age and generation. Missing, expired, incompatible or historically shared keys in the selected profile fail before rollout mutation; provisioning and rotation remain separate L3 material operations after preparing the matching server peers. Existing shared-key records require individual migration with retained rollback before selective revoke. The backend must contain the key-binding guard.
+- The owner decision of 2026-09-13 makes AWG3.1 the only active AWG acceptance/development lane. AWG2 gates are `SKIPPED_BY_OWNER`; retained AWG2 code, records and evidence do not require a new matrix. Inventory existing consumers before retiring their live material or listeners. This does not enable public AWG3.1 or change its lab/default-off boundary.
 - `awg31_lab` is the parallel owner-only AWG 3.1 lane. It has the same fail-closed allowlist, device-bound encrypted-material and managed-profile boundaries as AWG2, plus the reviewed AWG 3.1 timing/header-protection contract. `AWG31_LAB_MATERIAL_SECRET` is runtime-only secret-manager input.
 - `hy2_lab` is a separate owner-only Hysteria2 lane implemented by the existing embedded sing-box engine. Source defaults are `enabled=false` and `kill_switch_engaged=true`. Selection requires exact `pokrov.hy2.outbound.v1` ID/SHA, `hy2-v1` revision, active-device/platform and node allowlists, a ready POKROV-owned server record and a fresh encrypted row in `hy2_lab_materials`. The managed subset requires verified TLS/SNI with ALPN `h3`, exactly one port, bounded bandwidth and optional Salamander; raw URIs, port hopping, Gecko, Mimic and insecure TLS fail closed.
 - HY2 material is provisioned only through the L3 guarded `PUT /api/admin/client/hy2-lab/material`; `HY2_LAB_MATERIAL_SECRET` is separate runtime-only secret-manager input. No owned HY2 server is deployed yet, so source/AAR/client/default-off evidence must not be reported as a live handshake.
@@ -1948,3 +1949,19 @@ deployer does not update npm dependencies or download Node implicitly. Scoped
 support deployment retains the previous runtime files, dependency link and
 support environment, restarts only API/helpbot and checks delayed health. See
 [the support case contract](../architecture/support-feedback-flow.md#pi-investigation-for-ticket-conversations).
+
+
+### Owned DE AWG3.1 reply-policy repair — 2026-09-13
+
+[Bounded evidence](../developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/awg31-installed-20260913/receipt.json)
+records absent live UDP reply rules/tables, restored using existing secondary
+source routing with original primary addresses/default route and processes
+preserved. AWG3.1 UDP3478 uses table23478/priority13478. The exact live policy is
+persisted in `/etc/systemd/network/10-netplan-eth0.network.d/60-pokrov-awg31-reply.conf`
+(SHA256 af517ceffe1f17c1767812b2f605caecfe2b8c70ab3de1bf3fe14ec31fa53321).
+File and combined-config readback pass; no networkd reload/restart or reboot
+was performed. Restart durability is unproven. Existing AWG2 live policy was
+restored before retirement decision; no new AWG2 persistence was installed.
+Temporary per-peer fault rules and exact-install lab admission were removed.
+Two owned devices' existing AWG2 materials were inventoried and retained;
+none had an AWG2 default/carrier/cohort assignment at that readback.
