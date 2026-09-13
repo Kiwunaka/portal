@@ -18,15 +18,13 @@ Root `AGENTS.md` is the only tracked platform instruction file. Put scoped navig
 
 ## Proportional Engineering
 
-- Finish the assigned user scenario before starting another implementation or evidence cycle. Do not substitute intermediate PASS reports, repeated builds, or growing evidence bundles for completing its acceptance criteria.
-- Run only checks that prove changed behavior or satisfy an applicable required gate. Repeat a passed check only after a relevant change, a failure, or new evidence that invalidates its result. Do not add tests, rebuild packages, or create reports merely to show progress; after sufficient verification, integrate the result and continue to the next required outcome.
-
-- Apply KISS, YAGNI, and the Pareto principle. Make the smallest maintainable change that satisfies explicit acceptance criteria and evidence; prefer existing patterns and code paths.
-- Do not add speculative abstractions, dependencies, compatibility layers, fallbacks, configuration, cleanup, documentation, or future-proofing outside the assigned scope.
-- Keep verification proportional. Add or update only the smallest focused tests needed to prove changed behavior or prevent a concrete observed regression. Do not add redundant unit/integration/E2E coverage, exhaustive edge-case matrices, broad regression suites, or unrelated test refactors unless the task, affected shared contract, or observed failure requires them.
-- Keep security work proportional to the actual trust boundary and concrete threat model. Preserve mandatory safeguards and fix vulnerabilities introduced or exposed by the task, but do not add speculative hardening, new security frameworks, or unrelated defenses without evidence or an explicit requirement.
-- Before expanding scope, identify the concrete acceptance criterion, failure, or risk that requires it. If none exists, omit the extra work. If expansion would materially change the solution, request owner direction first.
-- These proportionality rules do not authorize skipping checks explicitly required by the selected router row, current repository contracts, or release gates applicable to the changed behavior.
+- Finish each assigned scenario through acceptance and integration. Intermediate PASS reports, repeated builds, and evidence bundles do not substitute for completion.
+- Apply KISS, YAGNI, and Pareto: choose the smallest maintainable solution that satisfies the task; prefer existing patterns and code paths.
+- Do not add speculative abstractions, dependencies, compatibility layers, fallbacks, configuration, cleanup, documentation, or future-proofing.
+- Keep verification proportional: use the smallest focused tests for changed behavior or an observed regression. Repeat a passed check only after a relevant change, failure, or invalidating evidence. Do not add redundant suites, fixtures, test refactors, builds, or reports merely to show progress.
+- Keep security work within the actual trust boundary and concrete threat model. Preserve mandatory safeguards and fix exposed vulnerabilities; avoid speculative hardening or frameworks.
+- Expand scope only for a concrete acceptance criterion, failure, or risk. Request owner direction if that expansion materially changes the solution.
+- Always complete checks required by the selected router row, repository contracts, and applicable release gates.
 
 ## Architecture Shape
 
